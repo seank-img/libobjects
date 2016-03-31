@@ -42,7 +42,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <inttypes.h>
-#include "lwm2m_core.h"
+#include <awa/static.h>
 #include "coap_abstraction.h"
 #include "hmac.h"
 #include "b64.h"
@@ -68,303 +68,37 @@
 #define MAX_STRING_SIZE								64
 #define MAX_KEY_SIZE								64
 
-#define REGISTER_FLOW_OBJECT_RESOURCE(context, name, id, type, minInstances) \
-	REGISTER_RESOURCE(context, name, FLOWM2M_FLOW_OBJECT, id, type, \
-		MultipleInstancesEnum_Single, minInstances, Operations_RW, \
-		&flowObjectResourceOperationHandlers)
 
-#define CREATE_FLOW_OBJECT_OPTIONAL_RESOURCE(context, objectInstanceId, resourcId) \
-	CREATE_OPTIONAL_RESOURCE(context, FLOWM2M_FLOW_OBJECT, objectInstanceId, resourcId)
-
-/***************************************************************************************************
- * Typedefs
- **************************************************************************************************/
-
-typedef struct
-{
-	void * DeviceID;
-	int DeviceIDSize;
-	void * ParentID;
-	int64_t ParentIDSize;
-	char * DeviceType;
-	char * Name;
-	char * Description;
-	char * FCAP;
-	int64_t LicenseeID;
-	void * LicenseeChallenge;
-	int64_t LicenseeChallengeSize;
-	int64_t HashIterations;
-	void * LicenseeHash;
-	int64_t LicenseeHashSize;
-	int64_t Status;
-} FlowObject;
-
-/***************************************************************************************************
- * Prototypes
- **************************************************************************************************/
-
-static int FlowObject_ResourceReadHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID,
-	ResourceInstanceIDType resourceInstanceID, uint8_t * destBuffer, int destBufferLen);
-
-static int FlowObject_ResourceGetLengthHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID,
-	ResourceInstanceIDType resourceInstanceID);
-
-static int FlowObject_ResourceWriteHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID,
-	ResourceInstanceIDType resourceInstanceID, uint8_t * srcBuffer, int srcBufferLen,
-	bool * changed);
-
-static int FlowObject_ResourceCreateHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID);
-
-static int FlowObject_ObjectCreateInstanceHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID);
-
-static int FlowObject_ObjectDeleteHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID);
 
 /***************************************************************************************************
  * Globals
  **************************************************************************************************/
 
-static char licenseeSecret[MAX_STRING_SIZE] = "getATTtDsNBpBRnMsN7GoQ==";
-FlowObject flowObject;
+#define FLOW_INSTANCES 1
+static char licenseeSecret[64] = "getATTtDsNBpBRnMsN7GoQ==";
 
-static ObjectOperationHandlers flowObjectOperationHandlers =
-{
-	.CreateInstance = FlowObject_ObjectCreateInstanceHandler,
-	.Delete = FlowObject_ObjectDeleteHandler,
-};
-
-static ResourceOperationHandlers flowObjectResourceOperationHandlers =
-{
-	.Read = FlowObject_ResourceReadHandler,
-	.GetLength = FlowObject_ResourceGetLengthHandler,
-	.Write = FlowObject_ResourceWriteHandler,
-	.CreateOptionalResource = FlowObject_ResourceCreateHandler,
-	.Execute = NULL,
-};
 
 /***************************************************************************************************
- * Implementation - Private
+ * Implementation - Public
  **************************************************************************************************/
-
-static int FlowObject_ObjectCreateInstanceHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID)
+typedef struct
 {
-	return 0;
-}
+	int8_t DeviceID[16];
+	int8_t ParentID[16];
+	char DeviceType[64];
+	char Name[64];
+	char Description[64];
+	char FCAP[64];
+	int8_t LicenseeID;
+	char LicenseeChallenge[64];
+	int8_t HashIterations;
+	uint8_t LicenseeHash[SHA256_HASH_LENGTH];
+	int8_t Status;
+} FlowObject;
 
-static int FlowObject_ResourceCreateHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID)
-{
-	return 0;
-}
+static FlowObject flow[FLOW_INSTANCES];
 
-static int FlowObject_ObjectDeleteHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID)
-{
-
-	if (objectID != FLOWM2M_FLOW_OBJECT)
-	{
-		Lwm2m_Error("FlowObject_ObjectDeleteHandler Invalid OIR: %d/%d/%d\n", objectID,
-			objectInstanceID, resourceID);
-		return -1;
-	}
-
-	if (objectInstanceID == 0)
-	{
-		memset(&flowObject, 0, sizeof(FlowObject));
-
-		if(flowObject.DeviceID)
-			free(flowObject.DeviceID);
-		if(flowObject.ParentID)
-			free(flowObject.ParentID);
-		if(flowObject.DeviceType)
-			free(flowObject.DeviceType);
-		if(flowObject.Name)
-			free(flowObject.Name);
-		if(flowObject.Description)
-			free(flowObject.Description);
-		if(flowObject.FCAP)
-			free(flowObject.FCAP);
-		if(flowObject.LicenseeChallenge)
-			free(flowObject.LicenseeChallenge);
-		if(flowObject.LicenseeHash)
-			free(flowObject.LicenseeHash);
-	}
-	else
-	{
-		Lwm2m_Error("FlowObject_ObjectDeleteHandler Invalid instance (not 0): %d", objectInstanceID);
-		return -1;
-	}
-
-	return 0;
-}
-
-static int FlowObject_ResourceReadHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID,
-	ResourceInstanceIDType resourceInstanceID, uint8_t * destBuffer, int destBufferLen)
-{
-	int result = 0;
-
-	switch (resourceID)
-	{
-		case FLOWM2M_FLOW_OBJECT_DEVICEID:
-			if(flowObject.DeviceID != NULL)
-			{
-				memcpy(destBuffer, flowObject.DeviceID, flowObject.DeviceIDSize);
-				result = flowObject.DeviceIDSize;
-			}
-			break;
-
-		case FLOWM2M_FLOW_OBJECT_PARENTID:
-			if(flowObject.ParentID != NULL)
-			{
-				memcpy(destBuffer, flowObject.ParentID, flowObject.ParentIDSize);
-				result = flowObject.ParentIDSize;
-			}
-			break;
-
-		case FLOWM2M_FLOW_OBJECT_DEVICETYPE:
-			if(flowObject.DeviceType != NULL)
-			{
-				memcpy(destBuffer, flowObject.DeviceType, strlen(flowObject.DeviceType) + 1);
-				result = strlen(flowObject.DeviceType);
-			}
-			break;
-
-		case FLOWM2M_FLOW_OBJECT_NAME:
-			if(flowObject.Name != NULL)
-			{
-				memcpy(destBuffer, flowObject.Name, strlen(flowObject.Name) + 1);
-				result = strlen(flowObject.Name) + 1;
-			}
-			break;
-
-		case FLOWM2M_FLOW_OBJECT_DESCRIPTION:
-			if(flowObject.Description != NULL)
-			{
-				memcpy(destBuffer, flowObject.Description, strlen(flowObject.Description) + 1);
-				result = strlen(flowObject.Description) + 1;
-			}
-			break;
-
-		case FLOWM2M_FLOW_OBJECT_FCAP:
-			if(flowObject.FCAP != NULL)
-			{
-				memcpy(destBuffer, flowObject.FCAP, strlen(flowObject.FCAP) + 1);
-				result = strlen(flowObject.FCAP) + 1;
-			}
-			break;
-
-		case FLOWM2M_FLOW_OBJECT_LICENSEEID:
-			memcpy(destBuffer, &flowObject.LicenseeID, sizeof(flowObject.LicenseeID));
-			result = sizeof(flowObject.LicenseeID);
-			break;
-
-		case FLOWM2M_FLOW_OBJECT_LICENSEECHALLENGE:
-			if(flowObject.LicenseeChallenge != NULL)
-			{
-				memcpy(destBuffer, flowObject.LicenseeChallenge, flowObject.LicenseeChallengeSize);
-				result = flowObject.LicenseeChallengeSize;
-			}
-			break;
-
-		case FLOWM2M_FLOW_OBJECT_HASHITERATIONS:
-			memcpy(destBuffer, &flowObject.HashIterations, sizeof(flowObject.HashIterations));
-			result = sizeof(flowObject.HashIterations);
-			break;
-
-		case FLOWM2M_FLOW_OBJECT_LICENSEEHASH:
-			if(flowObject.LicenseeHash != NULL)
-			{
-				memcpy(destBuffer, flowObject.LicenseeHash, flowObject.LicenseeHashSize);
-				result = flowObject.LicenseeHashSize;
-			}
-			break;
-
-		case FLOWM2M_FLOW_OBJECT_STATUS:
-			memcpy(destBuffer, &flowObject.Status, sizeof(flowObject.Status));
-			result = sizeof(flowObject.Status);
-			break;
-
-		default:
-			result = -1;
-			break;
-	}
-
-	return result;
-}
-
-static int FlowObject_ResourceGetLengthHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID,
-	ResourceInstanceIDType resourceInstanceID)
-{
-	int result = 0;
-
-	switch (resourceID)
-	{
-		case FLOWM2M_FLOW_OBJECT_DEVICEID:
-			result = flowObject.DeviceIDSize;
-			break;
-
-		case FLOWM2M_FLOW_OBJECT_PARENTID:
-			result = flowObject.ParentIDSize;
-			break;
-
-		case FLOWM2M_FLOW_OBJECT_DEVICETYPE:
-			if(flowObject.DeviceType != NULL)
-				result = strlen(flowObject.DeviceType) + 1;
-			break;
-
-		case FLOWM2M_FLOW_OBJECT_NAME:
-			if(flowObject.Name != NULL)
-				result = strlen(flowObject.Name) + 1;
-			break;
-
-		case FLOWM2M_FLOW_OBJECT_DESCRIPTION:
-			if(flowObject.Description != NULL)
-				result = strlen(flowObject.Description) + 1;
-			break;
-
-		case FLOWM2M_FLOW_OBJECT_FCAP:
-			if(flowObject.FCAP != NULL)
-				result = strlen(flowObject.FCAP) + 1;
-			break;
-
-		case FLOWM2M_FLOW_OBJECT_LICENSEEID:
-			result = sizeof(flowObject.LicenseeID);
-			break;
-
-		case FLOWM2M_FLOW_OBJECT_LICENSEECHALLENGE:
-			result = flowObject.LicenseeChallengeSize;
-			break;
-
-		case FLOWM2M_FLOW_OBJECT_HASHITERATIONS:
-			result = sizeof(flowObject.HashIterations);
-			break;
-
-		case FLOWM2M_FLOW_OBJECT_LICENSEEHASH:
-			result = flowObject.LicenseeHashSize;
-			break;
-
-		case FLOWM2M_FLOW_OBJECT_STATUS:
-			result = sizeof(flowObject.Status);
-			break;
-
-		default:
-			result = -1;
-			break;
-	}
-
-	return result;
-}
-
-static bool CalculateLicenseeHash(char * licenseeSecret, uint8_t hash[SHA256_HASH_LENGTH],
-	const char * challenge, int challengeLength, int iterations)
+static bool CalculateLicenseeHash(char *licenseeSecret, uint8_t hash[SHA256_HASH_LENGTH], const char *challenge, int challengeLength, int iterations)
 {
 	int i;
 	uint8_t key[MAX_KEY_SIZE];
@@ -383,196 +117,363 @@ static bool CalculateLicenseeHash(char * licenseeSecret, uint8_t hash[SHA256_HAS
 	return true;
 }
 
-static int FlowObject_ResourceWriteHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID,
-	ResourceInstanceIDType resourceInstanceID, uint8_t * srcBuffer, int srcBufferLen, bool * changed)
+AwaResult handler(AwaStaticClient *client, AwaOperation operation, AwaObjectID objectID, AwaObjectInstanceID objectInstanceID,
+	AwaResourceID resourceID, AwaResourceInstanceID resourceInstanceID, void **dataPointer, uint16_t *dataSize, bool *changed)
 {
-	int result;
+	AwaResult result = AwaResult_InternalError;
 
-	switch(resourceID)
+	if (!((objectID == FLOWM2M_FLOW_OBJECT) && (objectInstanceID >= 0) && (objectInstanceID < FLOW_INSTANCES)))
 	{
-		case FLOWM2M_FLOW_OBJECT_DEVICEID:
-			if(flowObject.DeviceID)
-				free(flowObject.DeviceID);
-			flowObject.DeviceID = malloc(srcBufferLen);
-			memcpy(flowObject.DeviceID, srcBuffer, srcBufferLen);
-			result = flowObject.DeviceIDSize = srcBufferLen;
+		printf("incorrect flow object data\n");
+		return result;
+	}
+
+	switch (operation)
+	{
+		case AwaOperation_CreateObjectInstance:
+			printf("flow op - create object instance\n\n");
+			result = AwaResult_SuccessCreated;
+			memset(&flow[objectInstanceID], 0, sizeof(flow[objectInstanceID]));
 			break;
 
-		case FLOWM2M_FLOW_OBJECT_PARENTID:
-			if(flowObject.ParentID)
-				free(flowObject.ParentID);
-			flowObject.ParentID = malloc(srcBufferLen);
-			memcpy(flowObject.ParentID, srcBuffer, srcBufferLen);
-			result = flowObject.ParentIDSize = srcBufferLen;
+		case AwaOperation_CreateResource:
+			printf("flow op - create resource\n");
+			result = AwaResult_SuccessCreated;
 			break;
 
-		case FLOWM2M_FLOW_OBJECT_DEVICETYPE:
-			if(flowObject.DeviceType)
-				free(flowObject.DeviceType);
-			flowObject.DeviceType = malloc(srcBufferLen + 1);
-			memset(flowObject.DeviceType, 0, srcBufferLen + 1);
-			memcpy(flowObject.DeviceType, srcBuffer, srcBufferLen);
-			Lwm2m_Debug("Device type: %s\n", flowObject.DeviceType);
-			result = srcBufferLen;
+		case AwaOperation_Read:
+			printf("flow op - read\n");
+			switch (resourceID)
+			{
+				case 0:
+					*dataPointer = flow[objectInstanceID].DeviceID;
+					*dataSize = sizeof(flow[objectInstanceID].DeviceID);
+					break;
+
+				case 1:
+					*dataPointer = flow[objectInstanceID].ParentID;
+					*dataSize = sizeof(flow[objectInstanceID].ParentID);
+					break;
+
+				case 2:
+					*dataPointer = flow[objectInstanceID].DeviceType;
+					*dataSize = strlen(flow[objectInstanceID].DeviceType) + 1;
+					break;
+
+				case 3:
+					*dataPointer = flow[objectInstanceID].Name;
+					*dataSize = strlen(flow[objectInstanceID].Name) + 1;
+					break;
+
+				case 4:
+					*dataPointer = flow[objectInstanceID].Description;
+					*dataSize = strlen(flow[objectInstanceID].Description) + 1;
+					break;
+
+				case 5:
+					*dataPointer = flow[objectInstanceID].FCAP;
+					*dataSize = strlen(flow[objectInstanceID].FCAP) + 1;
+					break;
+
+				case 6:
+					*dataPointer = &flow[objectInstanceID].LicenseeID;
+					*dataSize = sizeof(flow[objectInstanceID].LicenseeID);
+					break;
+
+				case 7:
+					*dataPointer = flow[objectInstanceID].LicenseeChallenge;
+					*dataSize = sizeof(flow[objectInstanceID].LicenseeChallenge);
+					break;
+
+				case 8:
+					*dataPointer = &flow[objectInstanceID].HashIterations;
+					*dataSize = sizeof(flow[objectInstanceID].HashIterations);
+					break;
+
+				case 9:
+					*dataPointer = flow[objectInstanceID].LicenseeHash;
+					*dataSize = sizeof(flow[objectInstanceID].LicenseeHash);
+					break;
+
+				case 10:
+					*dataPointer = &flow[objectInstanceID].Status;
+					*dataSize = sizeof(flow[objectInstanceID].Status);
+					break;
+
+				default:
+					printf("Invalid resource id\n");
+			}
+			result = AwaResult_SuccessContent;
 			break;
 
-		case FLOWM2M_FLOW_OBJECT_NAME:
-			if(flowObject.Name)
-				free(flowObject.Name);
-			flowObject.Name = malloc(srcBufferLen + 1);
-			memset(flowObject.Name, 0, srcBufferLen + 1);
-			memcpy(flowObject.Name, srcBuffer, srcBufferLen);
-			result = srcBufferLen;
-			break;
+		case AwaOperation_Write:
+			printf("flow op - write\n");
+			switch (resourceID)
+			{
+				case 0:
+					memcpy(flow[objectInstanceID].DeviceID, *dataPointer, *dataSize);
+					*changed = true;
+					break;
 
-		case FLOWM2M_FLOW_OBJECT_DESCRIPTION:
-			if(flowObject.Description)
-				free(flowObject.Description);
-			flowObject.Description = malloc(srcBufferLen + 1);
-			memset(flowObject.Description, 0, srcBufferLen + 1);
-			memcpy(flowObject.Description, srcBuffer, srcBufferLen);
-			result = srcBufferLen;
-			break;
+				case 1:
+					memcpy(flow[objectInstanceID].ParentID, *dataPointer, *dataSize);
+					*changed = true;
+					break;
 
-		case FLOWM2M_FLOW_OBJECT_FCAP:
-			if(flowObject.FCAP)
-				free(flowObject.FCAP);
-			flowObject.FCAP = malloc(srcBufferLen + 1);
-			memset(flowObject.FCAP, 0, srcBufferLen + 1);
-			memcpy(flowObject.FCAP, srcBuffer, srcBufferLen);
-			Lwm2m_Error("FCAP: %s\n", flowObject.FCAP);
-			result = srcBufferLen;
-			break;
+				case 2:
+					strncpy(flow[objectInstanceID].DeviceType, *dataPointer, *dataSize + 1);
+					*changed = true;
+					break;
 
-		case FLOWM2M_FLOW_OBJECT_LICENSEEID:
-			memcpy(&flowObject.LicenseeID, srcBuffer, srcBufferLen);
-			result = srcBufferLen;
-			break;
+				case 3:
+					memcpy(flow[objectInstanceID].Name, *dataPointer, *dataSize);
+					*changed = true;
+					break;
 
-		case FLOWM2M_FLOW_OBJECT_LICENSEECHALLENGE:
-			if(flowObject.LicenseeChallenge)
-				free(flowObject.LicenseeChallenge);
-			flowObject.LicenseeChallenge = malloc(srcBufferLen);
-			memcpy(flowObject.LicenseeChallenge, srcBuffer, srcBufferLen);
-			result = flowObject.LicenseeChallengeSize = srcBufferLen;
-			break;
+				case 4:
+					strncpy(flow[objectInstanceID].Description, *dataPointer, *dataSize + 1);
+					*changed = true;
+					break;
 
-		case FLOWM2M_FLOW_OBJECT_HASHITERATIONS:
-			memcpy(&flowObject.HashIterations, srcBuffer, srcBufferLen);
-			result = srcBufferLen;
-			break;
+				case 5:
+					strncpy(flow[objectInstanceID].FCAP, *dataPointer, *dataSize + 1);
+					*changed = true;
+					break;
 
-		case FLOWM2M_FLOW_OBJECT_LICENSEEHASH:
-			if(flowObject.LicenseeHash)
-				free(flowObject.LicenseeHash);
-			flowObject.LicenseeHash = malloc(srcBufferLen);
-			memcpy(flowObject.LicenseeHash, srcBuffer, srcBufferLen);
-			result = flowObject.LicenseeHashSize = srcBufferLen;
-			*changed = true;
-			break;
+				case 6:
+					flow[objectInstanceID].LicenseeID = *dataPointer;
+					*changed = true;
+					break;
 
-		case FLOWM2M_FLOW_OBJECT_STATUS:
-			memcpy(&flowObject.Status, srcBuffer, srcBufferLen);
-			Lwm2m_Debug("Status: %d\n", (int)flowObject.Status);
-			result = srcBufferLen;
+				case 7:
+					memcpy(flow[objectInstanceID].LicenseeChallenge, *dataPointer, *dataSize);
+					*changed = true;
+					break;
+
+				case 8:
+					flow[objectInstanceID].HashIterations = *dataPointer;
+					*changed = true;
+					break;
+
+				case 9:
+					memcpy(flow[objectInstanceID].LicenseeHash, *dataPointer, *dataSize);
+					*changed = true;
+					break;
+
+				case 10:
+					flow[objectInstanceID].Status = *dataPointer;
+					*changed = true;
+					break;
+
+				default:
+					printf("invalid resource id for write operation\n");
+					break;
+			}
+			result = AwaResult_SuccessContent;
 			break;
 
 		default:
-			result = -1;
+			printf("default case for handler, operation - %d\n", operation);
 			break;
 	}
 
-	if(flowObject.HashIterations > 0 &&
-		flowObject.LicenseeChallengeSize > 0 &&
-		flowObject.LicenseeChallenge != NULL &&
-		(resourceID == FLOWM2M_FLOW_OBJECT_HASHITERATIONS ||
-		(resourceID == FLOWM2M_FLOW_OBJECT_LICENSEECHALLENGE)))
+	if(flow[objectInstanceID].HashIterations > 0 && flow[objectInstanceID].LicenseeChallenge != NULL
+		&& (resourceID == FLOWM2M_FLOW_OBJECT_HASHITERATIONS || (resourceID == FLOWM2M_FLOW_OBJECT_LICENSEECHALLENGE)))
 	{
 		uint8_t licenseeHash[SHA256_HASH_LENGTH];
 
-		Lwm2m_Debug("Calculating licensee hash with %d iterations...\n",
-			(int)flowObject.HashIterations);
+		printf("Calculating licensee hash with %d iterations...\n", flow[objectInstanceID].HashIterations);
 
-		if (CalculateLicenseeHash(licenseeSecret, licenseeHash, flowObject.LicenseeChallenge,
-			flowObject.LicenseeChallengeSize, flowObject.HashIterations))
+		if (CalculateLicenseeHash(licenseeSecret, licenseeHash, flow[objectInstanceID].LicenseeChallenge, 64,
+			flow[objectInstanceID].HashIterations))
 		{
-			Lwm2m_Debug("Calculated hash, writing Licensee Hash resource...\n");
-			if (Lwm2mCore_SetResourceInstanceValue(context, FLOWM2M_FLOW_OBJECT, 0,
-				FLOWM2M_FLOW_OBJECT_LICENSEEHASH, 0, licenseeHash, sizeof(licenseeHash)) == -1)
-			{
-				Lwm2m_Error("Failed to set Licensee Hash\n");
-				return -1;
-			}
+			printf("Calculated hash, writing Licensee Hash resource...\n");
+			memcpy(flow[objectInstanceID].LicenseeHash, licenseeHash, SHA256_HASH_LENGTH);
+			result = AwaStaticClient_ResourceChanged(client, FLOWM2M_FLOW_OBJECT, 0, FLOWM2M_FLOW_OBJECT_LICENSEEHASH);
 		}
 		else
 		{
-			Lwm2m_Error("Licensee secret is invalid\n");
-			return -1;
+			printf("Licensee secret is invalid\n");
+			return AwaResult_InternalError;
 		}
 	}
 
 	return result;
 }
 
-/***************************************************************************************************
- * Implementation - Public
- **************************************************************************************************/
-
-int Lwm2m_RegisterFlowObject(Lwm2mContextType * context)
+int DefineFlowObject(AwaStaticClient *awaClient)
 {
-	REGISTER_OBJECT(context, "FlowObject", FLOWM2M_FLOW_OBJECT, MultipleInstancesEnum_Single, \
-		MandatoryEnum_Optional, &flowObjectOperationHandlers);
-	REGISTER_FLOW_OBJECT_RESOURCE(context, "DeviceID", FLOWM2M_FLOW_OBJECT_DEVICEID, \
-		ResourceTypeEnum_TypeOpaque, MandatoryEnum_Mandatory);
-	REGISTER_FLOW_OBJECT_RESOURCE(context, "ParentID", FLOWM2M_FLOW_OBJECT_PARENTID, \
-		ResourceTypeEnum_TypeOpaque, MandatoryEnum_Optional);
-	REGISTER_FLOW_OBJECT_RESOURCE(context, "DeviceType", FLOWM2M_FLOW_OBJECT_DEVICETYPE, \
-		ResourceTypeEnum_TypeString, MandatoryEnum_Mandatory);
-	REGISTER_FLOW_OBJECT_RESOURCE(context, "Name", FLOWM2M_FLOW_OBJECT_NAME, \
-		ResourceTypeEnum_TypeString, MandatoryEnum_Optional);
-	REGISTER_FLOW_OBJECT_RESOURCE(context, "Description", FLOWM2M_FLOW_OBJECT_DESCRIPTION, \
-		ResourceTypeEnum_TypeString, MandatoryEnum_Optional);
-	REGISTER_FLOW_OBJECT_RESOURCE(context, "FCAP", FLOWM2M_FLOW_OBJECT_FCAP, \
-		ResourceTypeEnum_TypeString, MandatoryEnum_Mandatory);
-	REGISTER_FLOW_OBJECT_RESOURCE(context, "LicenseeID", FLOWM2M_FLOW_OBJECT_LICENSEEID, \
-		ResourceTypeEnum_TypeInteger, MandatoryEnum_Mandatory);
-	REGISTER_FLOW_OBJECT_RESOURCE(context, "LicenseeChallenge", FLOWM2M_FLOW_OBJECT_LICENSEECHALLENGE, \
-		ResourceTypeEnum_TypeOpaque, MandatoryEnum_Optional);
-	REGISTER_FLOW_OBJECT_RESOURCE(context, "HashIterations", FLOWM2M_FLOW_OBJECT_HASHITERATIONS, \
-		ResourceTypeEnum_TypeInteger, MandatoryEnum_Optional);
-	REGISTER_FLOW_OBJECT_RESOURCE(context, "LicenseeHash", FLOWM2M_FLOW_OBJECT_LICENSEEHASH, \
-		ResourceTypeEnum_TypeOpaque, MandatoryEnum_Optional);
-	REGISTER_FLOW_OBJECT_RESOURCE(context, "Status", FLOWM2M_FLOW_OBJECT_STATUS, \
-		ResourceTypeEnum_TypeInteger, MandatoryEnum_Optional);
+	AwaError error;
+
+	error = AwaStaticClient_DefineObjectWithHandler(awaClient, "Flow", 20000, 0, FLOW_INSTANCES, handler);
+	if (error != AwaError_Success)
+	{
+		printf("Failed to register flow bject\n");
+		return 1;
+	}
+
+	error = AwaStaticClient_DefineResourceWithHandler(awaClient, "DeviceID", 20000, 0, AwaResourceType_Opaque, 0, 1, AwaResourceOperations_ReadWrite,
+	handler);
+	if (error != AwaError_Success)
+	{
+		printf("Failed to define deviceID resource\n");
+		return 1;
+	}
+
+	error = AwaStaticClient_DefineResourceWithHandler(awaClient, "ParentID",  20000, 1, AwaResourceType_Opaque, 0, 1, AwaResourceOperations_ReadWrite,
+		handler);
+	if (error != AwaError_Success)
+	{
+		printf("Failed to define parentID resource\n");
+		return 1;
+	}
+
+	error = AwaStaticClient_DefineResourceWithHandler(awaClient, "DeviceType", 20000, 2, AwaResourceType_String, 0, 1, AwaResourceOperations_ReadWrite,
+		handler);
+	if (error != AwaError_Success)
+	{
+		printf("Failed to define device type resource\n");
+		return 1;
+	}
+
+	error = AwaStaticClient_DefineResourceWithHandler(awaClient, "Name", 20000, 3, AwaResourceType_String, 0, 1, AwaResourceOperations_ReadWrite,
+		handler);
+	if (error != AwaError_Success)
+	{
+		printf("Failed to define name resource\n");
+		return 1;
+	}
+
+	error = AwaStaticClient_DefineResourceWithHandler(awaClient, "Description", 20000, 4, AwaResourceType_String, 0, 1, AwaResourceOperations_ReadWrite,
+		handler);
+	if (error != AwaError_Success)
+	{
+		printf("Failed to define description resource\n");
+		return 1;
+	}
+
+	error = AwaStaticClient_DefineResourceWithHandler(awaClient, "FCAP", 20000, 5, AwaResourceType_String, 0, 1, AwaResourceOperations_ReadWrite,
+		handler);
+	if (error != AwaError_Success)
+	{
+		printf("Failed to define FCAP resource\n");
+		return 1;
+	}
+
+	error = AwaStaticClient_DefineResourceWithHandler(awaClient, "LicenseeID", 20000, 6, AwaResourceType_String, 0, 1, AwaResourceOperations_ReadWrite,
+		handler);
+	if (error != AwaError_Success)
+	{
+		printf("Failed to define LicenseeID resource\n");
+		return 1;
+	}
+
+	error = AwaStaticClient_DefineResourceWithHandler(awaClient, "LicenseeChallenge", 20000, 7, AwaResourceType_String, 0, 1, AwaResourceOperations_WriteOnly,
+		handler);
+	if (error != AwaError_Success)
+	{
+		printf("Failed to define LicenseeChallenge resource\n");
+		return 1;
+	}
+
+	error = AwaStaticClient_DefineResourceWithHandler(awaClient, "HashIterations", 20000, 8, AwaResourceType_String, 0, 1, AwaResourceOperations_WriteOnly,
+		handler);
+	if (error != AwaError_Success)
+	{
+		printf("Failed to define HashIterations resource\n");
+		return 1;
+	}
+
+	error = AwaStaticClient_DefineResourceWithHandler(awaClient, "LicenseeHash", 20000, 9, AwaResourceType_String, 0, 1, AwaResourceOperations_ReadOnly,
+		handler);
+	if (error != AwaError_Success)
+	{
+		printf("Failed to define LicenseeHash resource\n");
+		return 1;
+	}
+
+	error = AwaStaticClient_DefineResourceWithHandler(awaClient, "Status", 20000, 10, AwaResourceType_String, 0, 1, AwaResourceOperations_ReadOnly,
+		handler);
+	if (error != AwaError_Success)
+	{
+		printf("Failed to define Status resource\n");
+		return 1;
+	}
 
 	return 0;
 }
 
-int Lwm2m_SetProvisioningInfo(Lwm2mContextType * context, const char * DeviceType,
-	const char * FCAP, int64_t LicenseeID)
+int CreateFlowObject(AwaStaticClient *awaClient)
 {
-	CREATE_OBJECT_INSTANCE(context, FLOWM2M_FLOW_OBJECT, 0);
+	AwaError error;
 
-	if (Lwm2mCore_SetResourceInstanceValue(context, FLOWM2M_FLOW_OBJECT, 0,
-		FLOWM2M_FLOW_OBJECT_FCAP, 0, FCAP, strlen(FCAP)) == -1)
+	error = AwaStaticClient_CreateObjectInstance(awaClient, FLOWM2M_FLOW_OBJECT, 0);
+	if (error != AwaError_Success)
 	{
-		Lwm2m_Error("Failed to set FCAP to %s\n", FCAP);
-		return -1;
+		printf("failed to create flow object instance\n");
+		return 1;
 	}
 
-	if (Lwm2mCore_SetResourceInstanceValue(context, FLOWM2M_FLOW_OBJECT, 0,
-		FLOWM2M_FLOW_OBJECT_DEVICETYPE, 0, DeviceType, strlen(DeviceType)) == -1)
+	error = AwaStaticClient_CreateResource(awaClient, FLOWM2M_FLOW_OBJECT, 0, FLOWM2M_FLOW_OBJECT_DEVICEID);
+	if (error != AwaError_Success)
 	{
-		Lwm2m_Error("Failed to set Device Type to %s\n", DeviceType);
-		return -1;
+		printf("failed to create device id resource\n");
+		return 1;
+	}
+	error = AwaStaticClient_CreateResource(awaClient, FLOWM2M_FLOW_OBJECT, 0, FLOWM2M_FLOW_OBJECT_PARENTID);
+	if (error != AwaError_Success)
+	{
+		printf("failed to create parent id resource\n");
+		return 1;
+	}
+	error = AwaStaticClient_CreateResource(awaClient, FLOWM2M_FLOW_OBJECT, 0, FLOWM2M_FLOW_OBJECT_DEVICETYPE);
+	if (error != AwaError_Success)
+	{
+		printf("failed to create device type resource\n");
+		return 1;
+	}
+	error = AwaStaticClient_CreateResource(awaClient, FLOWM2M_FLOW_OBJECT, 0, FLOWM2M_FLOW_OBJECT_NAME);
+	if (error != AwaError_Success)
+	{
+		printf("failed to create name resource\n");
+		return 1;
+	}
+	error = AwaStaticClient_CreateResource(awaClient, FLOWM2M_FLOW_OBJECT, 0, FLOWM2M_FLOW_OBJECT_DESCRIPTION);
+	if (error != AwaError_Success)
+	{
+		printf("failed to create description resource\n");
+		return 1;
+	}
+	error = AwaStaticClient_CreateResource(awaClient, FLOWM2M_FLOW_OBJECT, 0, FLOWM2M_FLOW_OBJECT_FCAP);
+	if (error != AwaError_Success)
+	{
+		printf("failed to create FCAP resource\n");
+		return 1;
+	}
+	error = AwaStaticClient_CreateResource(awaClient, FLOWM2M_FLOW_OBJECT, 0, FLOWM2M_FLOW_OBJECT_LICENSEEID);
+	if (error != AwaError_Success)
+	{
+		printf("failed to create licensee ID resource\n");
+		return 1;
+	}
+	error = AwaStaticClient_CreateResource(awaClient, FLOWM2M_FLOW_OBJECT, 0, FLOWM2M_FLOW_OBJECT_LICENSEECHALLENGE);
+	if (error != AwaError_Success)
+	{
+		printf("failed to create licensee challenge resource\n");
+		return 1;
+	}
+	error = AwaStaticClient_CreateResource(awaClient, FLOWM2M_FLOW_OBJECT, 0, FLOWM2M_FLOW_OBJECT_LICENSEEHASH);
+	if (error != AwaError_Success)
+	{
+		printf("failed to create licensee hash resource\n");
+		return 1;
+	}
+	error = AwaStaticClient_CreateResource(awaClient, FLOWM2M_FLOW_OBJECT, 0, FLOWM2M_FLOW_OBJECT_STATUS);
+	if (error != AwaError_Success)
+	{
+		printf("failed to create status resource\n");
+		return 1;
 	}
 
-	if (Lwm2mCore_SetResourceInstanceValue(context, FLOWM2M_FLOW_OBJECT, 0,
-		FLOWM2M_FLOW_OBJECT_LICENSEEID, 0, &LicenseeID, sizeof(int64_t)) == -1)
-	{
-		Lwm2m_Error("Failed to set Licensee Id to %" PRId64 "\n", LicenseeID);
-		return -1;
-	}
 	return 0;
 }

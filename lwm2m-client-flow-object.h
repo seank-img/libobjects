@@ -35,9 +35,10 @@
 
 #ifndef LWM2M_CLIENT_FLOW_OBJECT_H_
 #define LWM2M_CLIENT_FLOW_OBJECT_H_
+#include <awa/static.h>
 
-int Lwm2m_RegisterFlowObject(Lwm2mContextType * context);
-int Lwm2m_SetProvisioningInfo(Lwm2mContextType * context, const char * DeviceType,
-	const char * FCAP, int64_t LicenseeID);
+int DefineFlowObject(AwaStaticClient *awaClient);
+int CreateFlowObject(AwaStaticClient *awaClient);
+
 
 #endif /* LWM2M_CLIENT_FLOW_OBJECT_H_ */
