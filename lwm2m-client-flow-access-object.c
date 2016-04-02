@@ -95,12 +95,12 @@ AwaResult accessHandler(AwaStaticClient *client, AwaOperation operation, AwaObje
 			break;
 
 		case AwaOperation_CreateResource:
-			printf("flow access op - create resource\n");
+			printf("flow access op - create resource %d\n", resourceID);
 			result = AwaResult_SuccessCreated;
 			break;
 
 		case AwaOperation_Read:
-			printf("flow access op - read\n");
+			printf("flow access op - read for res %d\n", resourceID);
 			switch (resourceID)
 			{
 				case 0:
@@ -140,29 +140,29 @@ AwaResult accessHandler(AwaStaticClient *client, AwaOperation operation, AwaObje
 			break;
 
 			case AwaOperation_Write:
-				printf("flow acccess op - write\n");
+				printf("flow acccess op - write for res %d\n", resourcId);
 				switch (resourceID)
 				{
 					case 0:
-						strncpy(flowAccess[objectInstanceID].URL, *dataPointer, *dataSize + 1);
+						snprintf(flowAccess[objectInstanceID].URL, *dataSize, "%s", (char *)*dataPointer);
 						*changed = true;
 						result = AwaResult_SuccessCreated;
 						break;
 
 					case 1:
-						strncpy(flowAccess[objectInstanceID].CustomerKey, *dataPointer, *dataSize + 1);
+						snprintf(flowAccess[objectInstanceID].CustomerKey, *dataSize, "%s", (char *)*dataPointer);
 						*changed = true;
 						result = AwaResult_SuccessCreated;
 						break;
 
 					case 2:
-						strncpy(flowAccess[objectInstanceID].CustomerSecret, *dataPointer, *dataSize + 1);
+						snprintf(flowAccess[objectInstanceID].CustomerSecret, *dataSize, "%s", (char *)*dataPointer);
 						*changed = true;
 						result = AwaResult_SuccessCreated;
 						break;
 
 					case 3:
-						strncpy(flowAccess[objectInstanceID].RememberMeToken, *dataPointer, *dataSize + 1);
+						snprintf(flowAccess[objectInstanceID].RememberMeToken, *dataSize, "%s", (char *)*dataPointer);
 						*changed = true;
 						result = AwaResult_SuccessCreated;
 						break;
@@ -174,7 +174,7 @@ AwaResult accessHandler(AwaStaticClient *client, AwaOperation operation, AwaObje
 						break;
 
 					default:
-						printf("invalid res id for flow access - write op\n");
+						printf("invalid res id %d for flow access - write op\n", resourceID);
 						break;
 				}
 				break;
