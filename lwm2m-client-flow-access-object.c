@@ -66,7 +66,7 @@ typedef struct
 	char CustomerKey[64];
 	char CustomerSecret[64];
 	char RememberMeToken[64];
-	int8_t RememberMeTokenExpiry[16];
+	AwaTime RememberMeTokenExpiry;
 } FlowAccessObject;
 
 FlowAccessObject flowAccess[FLOW_ACCESS_INSTANCES];
@@ -76,7 +76,7 @@ FlowAccessObject flowAccess[FLOW_ACCESS_INSTANCES];
  **************************************************************************************************/
 
 AwaResult accessHandler(AwaStaticClient *client, AwaOperation operation, AwaObjectID objectID, AwaObjectInstanceID objectInstanceID,
-	AwaResourceID resourceID, AwaResourceInstanceID resourceInstanceID, void **dataPointer, uint16_t *dataSize, bool *changed)
+	AwaResourceID resourceID, AwaResourceInstanceID resourceInstanceID, void **dataPointer, size_t *dataSize, bool *changed)
 {
 	AwaResult result = AwaResult_InternalError;
 
@@ -105,30 +105,30 @@ AwaResult accessHandler(AwaStaticClient *client, AwaOperation operation, AwaObje
 			{
 				case 0:
 					*dataPointer = flowAccess[objectInstanceID].URL;
-					*dataSize = strlen(flowAccess[objectInstanceID].URL) + 1;
+					*dataSize = strlen(flowAccess[objectInstanceID].URL) ;
 					result = AwaResult_SuccessCreated;
 					break;
 
 				case 1:
 					*dataPointer = flowAccess[objectInstanceID].CustomerKey;
-					*dataSize = strlen(flowAccess[objectInstanceID].CustomerKey) + 1;
+					*dataSize = strlen(flowAccess[objectInstanceID].CustomerKey);
 					result = AwaResult_SuccessCreated;
 					break;
 
 				case 2:
 					*dataPointer = flowAccess[objectInstanceID].CustomerSecret;
-					*dataSize = strlen(flowAccess[objectInstanceID].CustomerSecret) + 1;
+					*dataSize = strlen(flowAccess[objectInstanceID].CustomerSecret);
 					result = AwaResult_SuccessCreated;
 					break;
 
 				case 3:
 					*dataPointer = flowAccess[objectInstanceID].RememberMeToken;
-					*dataSize = strlen(flowAccess[objectInstanceID].RememberMeToken) + 1;
+					*dataSize = strlen(flowAccess[objectInstanceID].RememberMeToken);
 					result = AwaResult_SuccessCreated;
 					break;
 
 				case 4:
-					*dataPointer = flowAccess[objectInstanceID].RememberMeTokenExpiry;
+					*dataPointer = &flowAccess[objectInstanceID].RememberMeTokenExpiry;
 					*dataSize = sizeof(flowAccess[objectInstanceID].RememberMeTokenExpiry);
 					result = AwaResult_SuccessCreated;
 					break;
@@ -140,35 +140,39 @@ AwaResult accessHandler(AwaStaticClient *client, AwaOperation operation, AwaObje
 			break;
 
 			case AwaOperation_Write:
-				printf("flow acccess op - write for res %d\n", resourcId);
+				printf("flow acccess op - write for res %d\n", resourceID);
 				switch (resourceID)
 				{
 					case 0:
-						snprintf(flowAccess[objectInstanceID].URL, *dataSize, "%s", (char *)*dataPointer);
+						memcpy(flowAccess[objectInstanceID].URL, *dataPointer, *dataSize);
+						flowAccess[objectInstanceID].URL[*dataSize] = '\0';
 						*changed = true;
 						result = AwaResult_SuccessCreated;
 						break;
 
 					case 1:
-						snprintf(flowAccess[objectInstanceID].CustomerKey, *dataSize, "%s", (char *)*dataPointer);
+					    memcpy(flowAccess[objectInstanceID].CustomerKey,*dataPointer, *dataSize);
+					    flowAccess[objectInstanceID].CustomerKey[*dataSize] = '\0';
 						*changed = true;
 						result = AwaResult_SuccessCreated;
 						break;
 
 					case 2:
-						snprintf(flowAccess[objectInstanceID].CustomerSecret, *dataSize, "%s", (char *)*dataPointer);
+					    memcpy(flowAccess[objectInstanceID].CustomerSecret, *dataPointer, *dataSize);
+					    flowAccess[objectInstanceID].CustomerSecret[*dataSize] = '\0';
 						*changed = true;
 						result = AwaResult_SuccessCreated;
 						break;
 
 					case 3:
-						snprintf(flowAccess[objectInstanceID].RememberMeToken, *dataSize, "%s", (char *)*dataPointer);
+					    memcpy(flowAccess[objectInstanceID].RememberMeToken, *dataPointer, *dataSize);
+					    flowAccess[objectInstanceID].RememberMeToken[*dataSize] = '\0';
 						*changed = true;
 						result = AwaResult_SuccessCreated;
 						break;
 
 					case 4:
-						memcpy(flowAccess[objectInstanceID].RememberMeTokenExpiry, *dataPointer, *dataSize);
+						flowAccess[objectInstanceID].RememberMeTokenExpiry = *((AwaTime *)*dataPointer);
 						*changed = true;
 						result = AwaResult_SuccessCreated;
 						break;
@@ -229,7 +233,7 @@ int DefineFlowAccessObject(AwaStaticClient *awaClient)
 		return 1;
 	}
 
-	error = AwaStaticClient_DefineResourceWithHandler(awaClient, "RememberMeTokenExpiry", 20001, 4, AwaResourceType_Opaque, 0, 1, AwaResourceOperations_ReadWrite,
+	error = AwaStaticClient_DefineResourceWithHandler(awaClient, "RememberMeTokenExpiry", 20001, 4, AwaResourceType_Time, 0, 1, AwaResourceOperations_ReadWrite,
 		accessHandler);
 	if (error != AwaError_Success)
 	{
@@ -237,49 +241,5 @@ int DefineFlowAccessObject(AwaStaticClient *awaClient)
 		return 1;
 	}
 
-	return 0;
-}
-
-int CreateFlowAccessObject(AwaStaticClient *awaClient)
-{
-	AwaError error;
-
-	error = AwaStaticClient_CreateObjectInstance(awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, 0);
-	if (error != AwaError_Success)
-	{
-		printf("failed to create flow access object instance\n");
-		return 1;
-	}
-
-	error = AwaStaticClient_CreateResource(awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, 0, FLOWM2M_FLOW_ACCESS_OBJECT_URL);
-	if (error != AwaError_Success)
-	{
-		printf("failed to create URL resource\n");
-		return 1;
-	}
-	error = AwaStaticClient_CreateResource(awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, 0, FLOWM2M_FLOW_ACCESS_OBJECT_CUSTOMERKEY);
-	if (error != AwaError_Success)
-	{
-		printf("failed to create customer key resource\n");
-		return 1;
-	}
-	error = AwaStaticClient_CreateResource(awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, 0, FLOWM2M_FLOW_ACCESS_OBJECT_CUSTOMERSECRET);
-	if (error != AwaError_Success)
-	{
-		printf("failed to create secret resource\n");
-		return 1;
-	}
-	error = AwaStaticClient_CreateResource(awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, 0, FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKEN);
-	if (error != AwaError_Success)
-	{
-		printf("failed to create token resource\n");
-		return 1;
-	}
-	error = AwaStaticClient_CreateResource(awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, 0, FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKENEXPIRY);
-	if (error != AwaError_Success)
-	{
-		printf("failed to create token expiry resource\n");
-		return 1;
-	}
 	return 0;
 }

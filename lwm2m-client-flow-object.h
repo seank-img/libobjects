@@ -38,7 +38,5 @@
 #include <awa/static.h>
 
 int DefineFlowObject(AwaStaticClient *awaClient);
-int CreateFlowObject(AwaStaticClient *awaClient);
-
 
 #endif /* LWM2M_CLIENT_FLOW_OBJECT_H_ */
