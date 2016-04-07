@@ -100,7 +100,8 @@ typedef struct
 	AwaInteger MemoryTotal;
 } DeviceObject;
 
-DeviceObject DeviceObjectStorage = {0};
+DeviceObject DeviceObjectStorage = { .SupportedBindingandModes = "U",
+                                     .SoftwareVersion = VERSION};
 
 /***************************************************************************************************
  * Implementation - Public
@@ -154,7 +155,23 @@ int DefineDeviceObject(AwaStaticClient *awaClient)
 
     AwaStaticClient_CreateObjectInstance(awaClient, LWM2M_DEVICE_OBJECT, 0);
 
+//    AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_MANUFACTURER);
+//    AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_MODEL_NUMBER);
+//    AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_SERIAL_NUMBER);
+//    AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_FIRMWARE_VERSION);
+//    AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_AVAILABLE_POWER_SOURCES);
+//	AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_POWER_SOURCE_VOLTAGE);
+//    AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_POWER_SOURCE_CURRENT);
+//    AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_BATTERY_LEVEL);
+//    AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_MEMORY_FREE);
+//    AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_CURRENT_TIME);
+//    AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_UTC_OFFSET);
+//    AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_TIME_ZONE);
+//    AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_DEVICE_TYPE);
+//    AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_HARDWARE_VERSION);
     AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_SOFTWARE_VERSION);
+//    AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_BATTERY_STATUS);
+//    AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_MEMORY_TOTAL);
 
-	return 0;
+    return 0;
 }
