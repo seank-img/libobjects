@@ -42,7 +42,6 @@
 #include <stdbool.h>
 #include <string.h>
 #include "coap_abstraction.h"
-#include "common.h"
 
 #include <awa/static.h>
 

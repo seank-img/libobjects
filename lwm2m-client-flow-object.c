@@ -46,7 +46,6 @@
 #include "coap_abstraction.h"
 #include "hmac.h"
 #include "b64.h"
-#include "common.h"
 
 /***************************************************************************************************
  * Definitions
