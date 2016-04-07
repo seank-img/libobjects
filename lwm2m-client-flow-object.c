@@ -283,7 +283,7 @@ AwaResult handler(AwaStaticClient *client, AwaOperation operation, AwaObjectID o
 
 	if(operation == AwaOperation_Write)
 	{
-        if(flow[objectInstanceID].HashIterations > 0 && flow[objectInstanceID].LicenseeChallengeSize > 0
+        if(flow[objectInstanceID].HashIterations > 0 && flow[objectInstanceID].LicenseeChallengeSize > 0 && flow[objectInstanceID].LicenseeHashSize == 0
             && (resourceID == FLOWM2M_FLOW_OBJECT_HASHITERATIONS || (resourceID == FLOWM2M_FLOW_OBJECT_LICENSEECHALLENGE)))
         {
             printf("Calculating licensee hash with %li iterations...\n", flow[objectInstanceID].HashIterations);

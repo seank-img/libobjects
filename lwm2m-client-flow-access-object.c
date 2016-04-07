@@ -107,31 +107,31 @@ AwaResult accessHandler(AwaStaticClient *client, AwaOperation operation, AwaObje
 				case FLOWM2M_FLOW_ACCESS_OBJECT_URL:
 					*dataPointer = flowAccess[objectInstanceID].URL;
 					*dataSize = strlen(flowAccess[objectInstanceID].URL) ;
-					result = AwaResult_SuccessCreated;
+					result = AwaResult_SuccessContent;
 					break;
 
 				case FLOWM2M_FLOW_ACCESS_OBJECT_CUSTOMERKEY:
 					*dataPointer = flowAccess[objectInstanceID].CustomerKey;
 					*dataSize = strlen(flowAccess[objectInstanceID].CustomerKey);
-					result = AwaResult_SuccessCreated;
+					result = AwaResult_SuccessContent;
 					break;
 
 				case FLOWM2M_FLOW_ACCESS_OBJECT_CUSTOMERSECRET:
 					*dataPointer = flowAccess[objectInstanceID].CustomerSecret;
 					*dataSize = strlen(flowAccess[objectInstanceID].CustomerSecret);
-					result = AwaResult_SuccessCreated;
+					result = AwaResult_SuccessContent;
 					break;
 
 				case FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKEN:
 					*dataPointer = flowAccess[objectInstanceID].RememberMeToken;
 					*dataSize = strlen(flowAccess[objectInstanceID].RememberMeToken);
-					result = AwaResult_SuccessCreated;
+					result = AwaResult_SuccessContent;
 					break;
 
 				case FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKENEXPIRY:
 					*dataPointer = &flowAccess[objectInstanceID].RememberMeTokenExpiry;
 					*dataSize = sizeof(flowAccess[objectInstanceID].RememberMeTokenExpiry);
-					result = AwaResult_SuccessCreated;
+					result = AwaResult_SuccessContent;
 					break;
 
 				default:
@@ -147,34 +147,34 @@ AwaResult accessHandler(AwaStaticClient *client, AwaOperation operation, AwaObje
 						memcpy(flowAccess[objectInstanceID].URL, *dataPointer, *dataSize);
 						flowAccess[objectInstanceID].URL[*dataSize] = '\0';
 						*changed = true;
-						result = AwaResult_SuccessCreated;
+						result = AwaResult_SuccessChanged;
 						break;
 
 					case FLOWM2M_FLOW_ACCESS_OBJECT_CUSTOMERKEY:
 					    memcpy(flowAccess[objectInstanceID].CustomerKey,*dataPointer, *dataSize);
 					    flowAccess[objectInstanceID].CustomerKey[*dataSize] = '\0';
 						*changed = true;
-						result = AwaResult_SuccessCreated;
+						result = AwaResult_SuccessChanged;
 						break;
 
 					case FLOWM2M_FLOW_ACCESS_OBJECT_CUSTOMERSECRET:
 					    memcpy(flowAccess[objectInstanceID].CustomerSecret, *dataPointer, *dataSize);
 					    flowAccess[objectInstanceID].CustomerSecret[*dataSize] = '\0';
 						*changed = true;
-						result = AwaResult_SuccessCreated;
+						result = AwaResult_SuccessChanged;
 						break;
 
 					case FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKEN:
 					    memcpy(flowAccess[objectInstanceID].RememberMeToken, *dataPointer, *dataSize);
 					    flowAccess[objectInstanceID].RememberMeToken[*dataSize] = '\0';
 						*changed = true;
-						result = AwaResult_SuccessCreated;
+						result = AwaResult_SuccessChanged;
 						break;
 
 					case FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKENEXPIRY:
 						flowAccess[objectInstanceID].RememberMeTokenExpiry = *((AwaTime *)*dataPointer);
 						*changed = true;
-						result = AwaResult_SuccessCreated;
+						result = AwaResult_SuccessChanged;
 						break;
 
 					default:
