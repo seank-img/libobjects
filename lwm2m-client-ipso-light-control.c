@@ -41,34 +41,24 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
-#include "lwm2m_core.h"
-#include "coap_abstraction.h"
+
+#include "awa/static.h"
 #include "lwm2m-client-ipso-light-control.h"
 
 /***************************************************************************************************
  * Definitions
  **************************************************************************************************/
 
-#define IPSO_LIGHT_CONTROL_OBJECT						3311
-#define IPSO_LIGHT_CONTROL_ON_OFF						5850
-#define IPSO_LIGHT_CONTROL_DIMMER						5851
-#define IPSO_LIGHT_CONTROL_COLOUR						5706
-#define IPSO_LIGHT_CONTROL_UNITS						5701
-#define IPSO_LIGHT_CONTROL_ON_TIME						5852
-#define IPSO_LIGHT_CONTROL_CUMULATIVE_ACTIVE_POWER		5805
-#define IPSO_LIGHT_CONTROL_POWER_FACTOR					5820
+#define IPSO_LIGHT_CONTROL_OBJECT                        3311
+#define IPSO_LIGHT_CONTROL_ON_OFF                        5850
+#define IPSO_LIGHT_CONTROL_DIMMER                        5851
+#define IPSO_LIGHT_CONTROL_COLOUR                        5706
+#define IPSO_LIGHT_CONTROL_UNITS                         5701
+#define IPSO_LIGHT_CONTROL_ON_TIME                       5852
+#define IPSO_LIGHT_CONTROL_CUMULATIVE_ACTIVE_POWER       5805
+#define IPSO_LIGHT_CONTROL_POWER_FACTOR                  5820
 
-#define LIGHT_CONTROLS									2
-
-#define MAX_STR_SIZE									64
-
-#define REGISTER_LIGHT_CONTROL_RESOURCE(context, name, id, type, minInstances, operations) \
-	REGISTER_RESOURCE(context, name, IPSO_LIGHT_CONTROL_OBJECT, id, type, \
-		MultipleInstancesEnum_Single, minInstances, operations, \
-		&LightControlResourceOperationHandlers)
-
-#define CREATE_LIGHT_CONTROL_OPTIONAL_RESOURCE(context, objectInstanceId, resourcId) \
-	CREATE_OPTIONAL_RESOURCE(context, IPSO_LIGHT_CONTROL_OBJECT, objectInstanceId, resourcId)
+#define LIGHT_CONTROLS                                   2
 
 /***************************************************************************************************
  * Typedefs
@@ -76,375 +66,271 @@
 
 typedef struct
 {
-	bool OnOff;
-	int64_t Dimmer;
-	char Colour[MAX_STR_SIZE];
-	char Units[MAX_STR_SIZE];
-	int64_t OnTime;
-	float CumulativeActivePower;
-	float PowerFactor;
-	LightControlCallBack callback;
-	void * context;
+    AwaBoolean OnOff;
+    AwaInteger Dimmer;
+    char Colour[64];
+    char Units[64];
+    AwaInteger OnTime;
+    AwaFloat CumulativeActivePower;
+    AwaFloat PowerFactor;
+    LightControlCallBack callback;
+    void *context;
 } IPSOLightControl;
-
-/***************************************************************************************************
- * Prototypes
- **************************************************************************************************/
-
-static int LightControl_ResourceReadHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID,
-	ResourceInstanceIDType resourceInstanceID, uint8_t * destBuffer, int destBufferLen);
-
-static int LightControl_ResourceGetLengthHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID,
-	ResourceInstanceIDType resourceInstanceID);
-
-static int LightControl_ResourceWriteHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID,
-	ResourceInstanceIDType resourceInstanceID, uint8_t * srcBuffer, int srcBufferLen,
-	bool * changed);
-
-
-static int LightControl_ResourceCreateHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID);
-
-static int LightControl_ObjectCreateInstanceHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID);
-
-static int LightControl_ObjectDeleteHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID);
 
 /***************************************************************************************************
  * Globals
  **************************************************************************************************/
 
-static ObjectOperationHandlers LightControlObjectOperationHandlers =
-{
-	.CreateInstance = LightControl_ObjectCreateInstanceHandler,
-	.Delete = LightControl_ObjectDeleteHandler,
-};
-
-static ResourceOperationHandlers LightControlResourceOperationHandlers =
-{
-	.Read = LightControl_ResourceReadHandler,
-	.GetLength = LightControl_ResourceGetLengthHandler,
-	.Write = LightControl_ResourceWriteHandler,
-	.CreateOptionalResource = LightControl_ResourceCreateHandler,
-	.Execute = NULL,
-};
-
-static IPSOLightControl LightControls[LIGHT_CONTROLS];
+static IPSOLightControl lightControls[LIGHT_CONTROLS];
 
 /***************************************************************************************************
  * Implementation
  **************************************************************************************************/
 
-static int LightControl_ObjectCreateInstanceHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID)
+static AwaResult lightControlHandler(AwaStaticClient *client, AwaOperation operation, AwaObjectID objectID, AwaObjectInstanceID objectInstanceID,
+     AwaResourceID resourceID, AwaResourceInstanceID resourceInstanceID, void **dataPointer, size_t *dataSize, bool *changed)
 {
-	if(objectInstanceID >= LIGHT_CONTROLS)
-	{
-		Lwm2m_Error("LightControl_ResourceCreateHandler instance number %d out of range (max %d)",
-			objectInstanceID, LIGHT_CONTROLS - 1);
-		return -1;
-	}
+    AwaResult result = AwaResult_InternalError;
+    bool callCallback = false;
+    if (!((objectID == IPSO_LIGHT_CONTROL_OBJECT) && (objectInstanceID >= 0) && (objectInstanceID < LIGHT_CONTROLS)))
+    {
+        printf("Incorrect object data\n");
+        return result;
+    }
 
-	return objectInstanceID;
+    switch (operation)
+    {
+        case AwaOperation_DeleteObjectInstance:
+            result = AwaResult_SuccessDeleted;
+            memset(&lightControls[objectInstanceID], 0, sizeof(lightControls[objectInstanceID]));
+            break;
+
+        case AwaOperation_CreateObjectInstance:
+            result = AwaResult_SuccessCreated;
+            memset(&lightControls[objectInstanceID], 0, sizeof(lightControls[objectInstanceID]));
+            break;
+
+        case AwaOperation_CreateResource:
+            result = AwaResult_SuccessCreated;
+            break;
+
+        case AwaOperation_Read:
+            result = AwaResult_SuccessContent;
+            switch (resourceID)
+            {
+                case IPSO_LIGHT_CONTROL_ON_OFF:
+                    *dataPointer = &lightControls[objectInstanceID].OnOff;
+                    *dataSize = sizeof(lightControls[objectInstanceID].OnOff) ;
+                    break;
+
+                case IPSO_LIGHT_CONTROL_DIMMER:
+                    *dataPointer = &lightControls[objectInstanceID].Dimmer;
+                    *dataSize = sizeof(lightControls[objectInstanceID].Dimmer) ;
+                    break;
+
+                case IPSO_LIGHT_CONTROL_COLOUR:
+                    *dataPointer = lightControls[objectInstanceID].Colour;
+                    *dataSize = sizeof(lightControls[objectInstanceID].Colour) ;
+                    break;
+
+                case IPSO_LIGHT_CONTROL_UNITS:
+                    *dataPointer = lightControls[objectInstanceID].Units;
+                    *dataSize = sizeof(lightControls[objectInstanceID].Units) ;
+                    break;
+
+                case IPSO_LIGHT_CONTROL_ON_TIME:
+                    *dataPointer = &lightControls[objectInstanceID].OnTime;
+                    *dataSize = sizeof(lightControls[objectInstanceID].OnTime) ;
+                    break;
+
+                case IPSO_LIGHT_CONTROL_CUMULATIVE_ACTIVE_POWER:
+                    *dataPointer = &lightControls[objectInstanceID].CumulativeActivePower;
+                    *dataSize = sizeof(lightControls[objectInstanceID].CumulativeActivePower) ;
+                    break;
+
+                case IPSO_LIGHT_CONTROL_POWER_FACTOR:
+                    *dataPointer = &lightControls[objectInstanceID].PowerFactor;
+                    *dataSize = sizeof(lightControls[objectInstanceID].PowerFactor) ;
+                    break;
+
+                default:
+                    printf("\n Invalid resource ID for LightControl read operation");
+                    result = AwaResult_InternalError;
+                    break;
+            }
+            break;
+
+        case AwaOperation_Write:
+            *changed = true;
+            result = AwaResult_SuccessChanged;
+            switch (resourceID)
+            {
+                case IPSO_LIGHT_CONTROL_ON_OFF:
+                    lightControls[objectInstanceID].OnOff = *((AwaBoolean *)*dataPointer);
+                    callCallback = true;
+                    break;
+
+                case IPSO_LIGHT_CONTROL_DIMMER:
+                    lightControls[objectInstanceID].Dimmer = *((AwaInteger *)*dataPointer);
+                    callCallback = true;
+                    break;
+
+                case IPSO_LIGHT_CONTROL_COLOUR:
+                    if(*dataSize < sizeof(lightControls[objectInstanceID].Colour))
+                    {
+                        memcpy(lightControls[objectInstanceID].Colour, *dataPointer, *dataSize);
+                        lightControls[objectInstanceID].Colour[*dataSize] = '\0';
+                        callCallback = true;
+                    }
+                    else
+                    {
+                        result = AwaResult_BadRequest;
+                    }
+                    break;
+
+                case IPSO_LIGHT_CONTROL_UNITS:
+                    if(*dataSize < sizeof(lightControls[objectInstanceID].Units))
+                    {
+                        memcpy(lightControls[objectInstanceID].Units, *dataPointer, *dataSize);
+                        lightControls[objectInstanceID].Units[*dataSize] = '\0';
+                    }
+                    else
+                    {
+                        result = AwaResult_BadRequest;
+                    }
+                    break;
+
+                case IPSO_LIGHT_CONTROL_ON_TIME:
+                    lightControls[objectInstanceID].OnTime = *((AwaInteger *)*dataPointer);
+                    break;
+
+                case IPSO_LIGHT_CONTROL_CUMULATIVE_ACTIVE_POWER:
+                    lightControls[objectInstanceID].CumulativeActivePower = *((AwaFloat *)*dataPointer);
+                    break;
+
+                case IPSO_LIGHT_CONTROL_POWER_FACTOR:
+                    lightControls[objectInstanceID].PowerFactor = *((AwaFloat *)*dataPointer);
+                    break;
+
+                default:
+                    printf("\n Invalid resource ID for LightControl write operation");
+                    result = AwaResult_InternalError;
+                    break;
+            }
+            if (lightControls[objectInstanceID].callback != NULL && callCallback)
+            {
+                lightControls[objectInstanceID].callback(lightControls[objectInstanceID].context,
+                    lightControls[objectInstanceID].OnOff, lightControls[objectInstanceID].Dimmer,
+                    lightControls[objectInstanceID].Colour);
+            }
+            break;
+        default:
+            printf("LightControl - unknown operation\n");
+            break;
+    }
+    return result;
 }
 
-static int LightControl_ResourceCreateHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID)
+int DefineLightControlObject(AwaStaticClient *awaClient)
 {
-	return 0;
+    AwaError error;
+    error = AwaStaticClient_DefineObjectWithHandler(awaClient, "LightControl", IPSO_LIGHT_CONTROL_OBJECT, 0, LIGHT_CONTROLS, lightControlHandler);
+    if (error != AwaError_Success)
+    {
+        printf("Failed to register light control object\n");
+        return -1;
+    }
+
+    error = AwaStaticClient_DefineResourceWithHandler(awaClient, "On/Off", IPSO_LIGHT_CONTROL_OBJECT, IPSO_LIGHT_CONTROL_ON_OFF, AwaResourceType_Boolean, 1, 1, AwaResourceOperations_ReadWrite, lightControlHandler);
+    if (error != AwaError_Success)
+    {
+        printf("Failed to define On/Off resource\n");
+        return -1;
+    }
+
+    error = AwaStaticClient_DefineResourceWithHandler(awaClient, "Dimmer", IPSO_LIGHT_CONTROL_OBJECT, IPSO_LIGHT_CONTROL_DIMMER, AwaResourceType_Integer, 0, 1, AwaResourceOperations_ReadWrite, lightControlHandler);
+    if (error != AwaError_Success)
+    {
+        printf("Failed to define Dimmer resource\n");
+        return -1;
+    }
+
+    error = AwaStaticClient_DefineResourceWithHandler(awaClient, "Colour", IPSO_LIGHT_CONTROL_OBJECT, IPSO_LIGHT_CONTROL_COLOUR, AwaResourceType_String, 0, 1, AwaResourceOperations_ReadWrite, lightControlHandler);
+    if (error != AwaError_Success)
+    {
+        printf("Failed to define Colour resource\n");
+        return -1;
+    }
+
+    error = AwaStaticClient_DefineResourceWithHandler(awaClient, "Units", IPSO_LIGHT_CONTROL_OBJECT, IPSO_LIGHT_CONTROL_UNITS, AwaResourceType_String, 1, 1, AwaResourceOperations_ReadOnly, lightControlHandler);
+    if (error != AwaError_Success)
+    {
+        printf("Failed to define Units resource\n");
+        return -1;
+    }
+
+    error = AwaStaticClient_DefineResourceWithHandler(awaClient, "OnTime", IPSO_LIGHT_CONTROL_OBJECT, IPSO_LIGHT_CONTROL_ON_TIME, AwaResourceType_Integer, 0, 1, AwaResourceOperations_ReadWrite, lightControlHandler);
+    if (error != AwaError_Success)
+    {
+        printf("Failed to define OnTime resource\n");
+        return -1;
+    }
+
+    error = AwaStaticClient_DefineResourceWithHandler(awaClient, "CumulativeActivePower", IPSO_LIGHT_CONTROL_OBJECT, IPSO_LIGHT_CONTROL_CUMULATIVE_ACTIVE_POWER, AwaResourceType_Float, 0, 1, AwaResourceOperations_ReadOnly, lightControlHandler);
+    if (error != AwaError_Success)
+    {
+        printf("Failed to define CumulativeActivePower resource\n");
+        return -1;
+    }
+
+    error = AwaStaticClient_DefineResourceWithHandler(awaClient, "PowerFactor", IPSO_LIGHT_CONTROL_OBJECT , IPSO_LIGHT_CONTROL_POWER_FACTOR, AwaResourceType_Float, 0, 1, AwaResourceOperations_ReadOnly, lightControlHandler);
+    if (error != AwaError_Success)
+    {
+        printf("Failed to define PowerFactor resource\n");
+        return -1;
+    }
+
+    return 0;
 }
 
-static int LightControl_ObjectDeleteHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID)
+int LightControl_AddLightControl(AwaStaticClient *awaClient, ObjectInstanceIDType objectInstanceID,
+    LightControlCallBack callback, void *callbackContext)
 {
-	if (objectID != IPSO_LIGHT_CONTROL_OBJECT)
-	{
-		Lwm2m_Error("LightControl_ObjectDeleteHandler Invalid OIR: %d/%d/%d\n", objectID,
-			objectInstanceID, resourceID);
-		return -1;
-	}
+    if ((awaClient == NULL) || (objectInstanceID < 0) || (objectInstanceID >= LIGHT_CONTROLS))
+    {
+        printf("Invalid arguments passed to %s", __func__);
+        return -1;
+    }
 
-	if(objectInstanceID >= LIGHT_CONTROLS)
-	{
-		Lwm2m_Error("LightControl_ObjectDeleteHandler instance number %d out of range (max %d)",
-			objectInstanceID, LIGHT_CONTROLS - 1);
-		return -1;
-	}
-
-	if (resourceID == -1)
-	{
-		memset(&LightControls[objectInstanceID], 0, sizeof(IPSOLightControl));
-	}
-	else
-	{
-		//TODO
-	}
-
-	return 0;
+    AwaStaticClient_CreateObjectInstance(awaClient, IPSO_LIGHT_CONTROL_OBJECT, objectInstanceID);
+    AwaStaticClient_CreateResource(awaClient, IPSO_LIGHT_CONTROL_OBJECT, objectInstanceID, IPSO_LIGHT_CONTROL_COLOUR);
+    AwaStaticClient_CreateResource(awaClient, IPSO_LIGHT_CONTROL_OBJECT, objectInstanceID, IPSO_LIGHT_CONTROL_ON_TIME);
+    lightControls[objectInstanceID].OnOff = false;
+    snprintf(lightControls[objectInstanceID].Colour, sizeof(lightControls[objectInstanceID].Colour), "Red%d", objectInstanceID+1);
+    lightControls[objectInstanceID].callback = callback;
+    lightControls[objectInstanceID].context = callbackContext;
+    if (callback != NULL)
+    {
+        lightControls[objectInstanceID].callback(lightControls[objectInstanceID].context,
+            lightControls[objectInstanceID].OnOff, lightControls[objectInstanceID].Dimmer,
+            lightControls[objectInstanceID].Colour);
+    }
+    return 0;
 }
 
-static int LightControl_ResourceReadHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID,
-	ResourceInstanceIDType resourceInstanceID, uint8_t * destBuffer, int destBufferLen)
+int LightControl_IncrementOnTime(AwaStaticClient *awaClient, ObjectInstanceIDType objectInstanceID, AwaInteger seconds)
 {
-	int result = 0;
+    if ((awaClient == NULL) || (objectInstanceID < 0) || (objectInstanceID >= LIGHT_CONTROLS))
+    {
+        printf("Invalid arguments passed to %s", __func__);
+        return -1;
+    }
 
-	switch (resourceID)
-	{
-		case IPSO_LIGHT_CONTROL_ON_OFF:
-			result = sizeof(LightControls[objectInstanceID].OnOff);
-			memcpy(destBuffer, &LightControls[objectInstanceID].OnOff, result);
-			break;
+    if(lightControls[objectInstanceID].OnOff != true)
+    {
+        return -1;
+    }
 
-		case IPSO_LIGHT_CONTROL_DIMMER:
-			result = sizeof(LightControls[objectInstanceID].Dimmer);
-			memcpy(destBuffer, &LightControls[objectInstanceID].Dimmer, result);
-			break;
-
-		case IPSO_LIGHT_CONTROL_COLOUR:
-			result = strlen(LightControls[objectInstanceID].Colour) + 1;
-			memcpy(destBuffer, LightControls[objectInstanceID].Colour, result);
-			break;
-
-		case IPSO_LIGHT_CONTROL_UNITS:
-			result = strlen(LightControls[objectInstanceID].Units) + 1;
-			memcpy(destBuffer, LightControls[objectInstanceID].Units, result);
-			break;
-
-		case IPSO_LIGHT_CONTROL_ON_TIME:
-			result = sizeof(LightControls[objectInstanceID].OnTime);
-			memcpy(destBuffer, &LightControls[objectInstanceID].OnTime, result);
-			break;
-
-		case IPSO_LIGHT_CONTROL_CUMULATIVE_ACTIVE_POWER:
-			result = sizeof(LightControls[objectInstanceID].CumulativeActivePower);
-			memcpy(destBuffer, &LightControls[objectInstanceID].CumulativeActivePower, result);
-			break;
-
-		case IPSO_LIGHT_CONTROL_POWER_FACTOR:
-			result = sizeof(LightControls[objectInstanceID].PowerFactor);
-			memcpy(destBuffer, &LightControls[objectInstanceID].PowerFactor, result);
-			break;
-
-		default:
-			result = -1;
-			break;
-	}
-
-	return result;
-}
-
-static int LightControl_ResourceGetLengthHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID,
-	ResourceInstanceIDType resourceInstanceID)
-{
-	int result = 0;
-
-	switch (resourceID)
-	{
-		case IPSO_LIGHT_CONTROL_ON_OFF:
-			result = sizeof(LightControls[objectInstanceID].OnOff);
-			break;
-
-		case IPSO_LIGHT_CONTROL_DIMMER:
-			result = sizeof(LightControls[objectInstanceID].Dimmer);
-			break;
-
-		case IPSO_LIGHT_CONTROL_COLOUR:
-			result = strlen(LightControls[objectInstanceID].Colour) + 1;
-			break;
-
-		case IPSO_LIGHT_CONTROL_UNITS:
-			result = strlen(LightControls[objectInstanceID].Units) + 1;
-			break;
-
-		case IPSO_LIGHT_CONTROL_ON_TIME:
-			result = sizeof(LightControls[objectInstanceID].OnTime);
-			break;
-
-		case IPSO_LIGHT_CONTROL_CUMULATIVE_ACTIVE_POWER:
-			result = sizeof(LightControls[objectInstanceID].CumulativeActivePower);
-			break;
-
-		case IPSO_LIGHT_CONTROL_POWER_FACTOR:
-			result = sizeof(LightControls[objectInstanceID].PowerFactor);
-			break;
-
-		default:
-			result = -1;
-			break;
-	}
-
-	return result;
-}
-
-static int LightControl_ResourceWriteHandler(void * context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID,
-	ResourceInstanceIDType resourceInstanceID, uint8_t * srcBuffer, int srcBufferLen, bool * changed)
-{
-	int result;
-	bool CallCallback = false;
-
-	switch(resourceID)
-	{
-		case IPSO_LIGHT_CONTROL_ON_OFF:
-			result = srcBufferLen;
-			memcpy(&LightControls[objectInstanceID].OnOff, srcBuffer, result);
-			CallCallback = true;
-			break;
-
-		case IPSO_LIGHT_CONTROL_DIMMER:
-			result = srcBufferLen;
-			memcpy(&LightControls[objectInstanceID].Dimmer, srcBuffer, result);
-			CallCallback = true;
-			break;
-
-		case IPSO_LIGHT_CONTROL_COLOUR:
-			result = srcBufferLen;
-			if(result < sizeof(LightControls[objectInstanceID].Colour))
-			{
-				memcpy(LightControls[objectInstanceID].Colour, srcBuffer, result);
-			}
-			else
-			{
-				Lwm2m_Error("LightControl_ResourceWriteHandler Colour Type string too long: %d",
-					result);
-				result = -1;
-			}
-			CallCallback = true;
-			break;
-
-		case IPSO_LIGHT_CONTROL_UNITS:
-			result = srcBufferLen;
-			if(result < sizeof(LightControls[objectInstanceID].Units))
-			{
-				memcpy(LightControls[objectInstanceID].Units, srcBuffer, result);
-			}
-			else
-			{
-				Lwm2m_Error("LightControl_ResourceWriteHandler Units Type string too long: %d",
-					result);
-				result = -1;
-			}
-			break;
-
-		case IPSO_LIGHT_CONTROL_ON_TIME:
-			result = srcBufferLen;
-			memcpy(&LightControls[objectInstanceID].OnTime, srcBuffer, result);
-			break;
-
-		case IPSO_LIGHT_CONTROL_CUMULATIVE_ACTIVE_POWER:
-			result = srcBufferLen;
-			memcpy(&LightControls[objectInstanceID].CumulativeActivePower, srcBuffer, result);
-			break;
-
-		case IPSO_LIGHT_CONTROL_POWER_FACTOR:
-			result = srcBufferLen;
-			memcpy(&LightControls[objectInstanceID].PowerFactor, srcBuffer, result);
-			break;
-		default:
-
-			result = -1;
-			break;
-	}
-
-	if (LightControls[objectInstanceID].callback != NULL && CallCallback)
-	{
-		LightControls[objectInstanceID].callback(LightControls[objectInstanceID].context,
-			LightControls[objectInstanceID].OnOff, LightControls[objectInstanceID].Dimmer,
-			LightControls[objectInstanceID].Colour);
-	}
-
-
-	if(result > 0)
-		*changed = true;
-
-	return result;
-}
-
-/***************************************************************************************************
- * Implementation - Public
- **************************************************************************************************/
-
-int LightControl_RegisterLightControlObject(Lwm2mContextType * context)
-{
-	REGISTER_OBJECT(context, "LightControl", IPSO_LIGHT_CONTROL_OBJECT,                      \
-		MultipleInstancesEnum_Multiple, MandatoryEnum_Optional,                              \
-		&LightControlObjectOperationHandlers);
-
-	REGISTER_LIGHT_CONTROL_RESOURCE(context, "On/Off", IPSO_LIGHT_CONTROL_ON_OFF,            \
-		ResourceTypeEnum_TypeBoolean, MandatoryEnum_Mandatory, Operations_RW);
-	REGISTER_LIGHT_CONTROL_RESOURCE(context, "Dimmer", IPSO_LIGHT_CONTROL_DIMMER,            \
-		ResourceTypeEnum_TypeInteger, MandatoryEnum_Optional, Operations_RW);
-	REGISTER_LIGHT_CONTROL_RESOURCE(context, "Colour", IPSO_LIGHT_CONTROL_COLOUR,            \
-		ResourceTypeEnum_TypeString, MandatoryEnum_Optional, Operations_RW);
-	REGISTER_LIGHT_CONTROL_RESOURCE(context, "Units", IPSO_LIGHT_CONTROL_UNITS,              \
-		ResourceTypeEnum_TypeString, MandatoryEnum_Mandatory, Operations_R);
-	REGISTER_LIGHT_CONTROL_RESOURCE(context, "OnTime", IPSO_LIGHT_CONTROL_ON_TIME,           \
-		ResourceTypeEnum_TypeInteger, MandatoryEnum_Optional, Operations_RW);
-	REGISTER_LIGHT_CONTROL_RESOURCE(context, "CumulativeActivePower",                        \
-		IPSO_LIGHT_CONTROL_CUMULATIVE_ACTIVE_POWER, ResourceTypeEnum_TypeFloat,              \
-		MandatoryEnum_Optional, Operations_R);
-	REGISTER_LIGHT_CONTROL_RESOURCE(context, "PowerFactor", IPSO_LIGHT_CONTROL_POWER_FACTOR, \
-		ResourceTypeEnum_TypeFloat, MandatoryEnum_Optional, Operations_R);
-
-	return 0;
-}
-
-int LightControl_AddLightControl(Lwm2mContextType * context, ObjectInstanceIDType objectInstanceID,
-	LightControlCallBack callback, void * callbackContext)
-{
-	if(objectInstanceID <= LIGHT_CONTROLS)
-	{
-		CREATE_OBJECT_INSTANCE(context, IPSO_LIGHT_CONTROL_OBJECT, objectInstanceID);
-		CREATE_LIGHT_CONTROL_OPTIONAL_RESOURCE(context, objectInstanceID, IPSO_LIGHT_CONTROL_ON_OFF);
-		CREATE_LIGHT_CONTROL_OPTIONAL_RESOURCE(context, objectInstanceID, IPSO_LIGHT_CONTROL_COLOUR);
-		CREATE_LIGHT_CONTROL_OPTIONAL_RESOURCE(context, objectInstanceID, IPSO_LIGHT_CONTROL_ON_TIME);
-
-		memset(&LightControls[objectInstanceID], 0, sizeof(IPSOLightControl));
-		snprintf(LightControls[objectInstanceID].Colour, MAX_STR_SIZE, "Red%d", objectInstanceID+1);
-
-		LightControls[objectInstanceID].callback = callback;
-		LightControls[objectInstanceID].context = callbackContext;
-
-		bool state = false;
-
-		if (Lwm2mCore_SetResourceInstanceValue(context, IPSO_LIGHT_CONTROL_OBJECT, objectInstanceID,
-			IPSO_LIGHT_CONTROL_ON_OFF, 0, &state, sizeof(state)) == -1)
-		{
-			Lwm2m_Error("Failed to set On/Off resource to %s", state ? "true" : "false");
-			return -1;
-		}
-	}
-	else
-	{
-		Lwm2m_Error("%d instance of Light Control exceeds max instances %d\n", objectInstanceID,
-			LIGHT_CONTROLS);
-		return -1;
-	}
-	return 0;
-}
-
-int LightControl_IncrementOnTime(Lwm2mContextType * context, ObjectInstanceIDType objectInstanceID,
-	int seconds)
-{
-	//only increment on time if it is on.
-	if(LightControls[objectInstanceID].OnOff == true)
-	{
-		int64_t OnTime = LightControls[objectInstanceID].OnTime + seconds;
-		if (Lwm2mCore_SetResourceInstanceValue(context, IPSO_LIGHT_CONTROL_OBJECT, objectInstanceID,
-			IPSO_LIGHT_CONTROL_ON_TIME, 0, &OnTime, sizeof(OnTime)) == -1)
-		{
-			Lwm2m_Error("Failed to increment ON Time resource\n");
-			return -1;
-		}
-	}
-	else
-		return -1;
-
-	return 0;
+    lightControls[objectInstanceID].OnTime += seconds;
+    return 0;
 }
