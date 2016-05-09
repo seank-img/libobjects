@@ -50,9 +50,9 @@
 
 typedef struct
 {
-    bool State;
+    AwaBoolean State;
     AwaInteger Counter;
-    bool Polarity;
+    AwaBoolean Polarity;
     AwaTime DebouncePeriod;
     AwaInteger EdgeSelection;
     char ApplicationType[128];
@@ -140,12 +140,12 @@ static AwaResult digitalInputHandler(AwaStaticClient *client, AwaOperation opera
 
                 case IPSO_APPLICATION_TYPE:
                     *dataPointer = digitalInputs[objectInstanceID].ApplicationType;
-                    *dataSize = sizeof(digitalInputs[objectInstanceID].ApplicationType) ;
+                    *dataSize = strlen(digitalInputs[objectInstanceID].ApplicationType) ;
                     break;
 
                 case IPSO_SENSOR_TYPE:
                     *dataPointer = digitalInputs[objectInstanceID].SensorType;
-                    *dataSize = sizeof(digitalInputs[objectInstanceID].SensorType) ;
+                    *dataSize = strlen(digitalInputs[objectInstanceID].SensorType) ;
                     break;
 
                 default:
@@ -190,7 +190,7 @@ static AwaResult digitalInputHandler(AwaStaticClient *client, AwaOperation opera
                     {
                         result = AwaResult_BadRequest;
                     }
-                break;
+                    break;
 
                 case IPSO_SENSOR_TYPE:
                     if(*dataSize < sizeof(digitalInputs[objectInstanceID].SensorType))
@@ -220,6 +220,8 @@ static AwaResult digitalInputHandler(AwaStaticClient *client, AwaOperation opera
 int DefineDigitalInputObject(AwaStaticClient *awaClient)
 {
     AwaError error;
+    int i;
+
     error = AwaStaticClient_DefineObjectWithHandler(awaClient, "DigitalInput", IPSO_DIGITAL_INPUT_OBJECT, 0, DIGITAL_INPUTS, digitalInputHandler);
     if (error != AwaError_Success)
     {
@@ -227,7 +229,7 @@ int DefineDigitalInputObject(AwaStaticClient *awaClient)
         return 1;
     }
 
-    error = AwaStaticClient_DefineResourceWithHandler(awaClient, "State", IPSO_DIGITAL_INPUT_OBJECT, IPSO_DIGITAL_INPUT_STATE, AwaResourceType_Boolean, 0, 1, AwaResourceOperations_ReadOnly, digitalInputHandler);
+    error = AwaStaticClient_DefineResourceWithHandler(awaClient, "State", IPSO_DIGITAL_INPUT_OBJECT, IPSO_DIGITAL_INPUT_STATE, AwaResourceType_Boolean, 1, 1, AwaResourceOperations_ReadOnly, digitalInputHandler);
     if (error != AwaError_Success)
     {
         printf("Failed to define State resource\n");
@@ -272,7 +274,7 @@ int DefineDigitalInputObject(AwaStaticClient *awaClient)
     error = AwaStaticClient_DefineResourceWithHandler(awaClient, "SensorType", IPSO_DIGITAL_INPUT_OBJECT , IPSO_SENSOR_TYPE, AwaResourceType_String, 0, 1, AwaResourceOperations_ReadOnly, digitalInputHandler);
     if (error != AwaError_Success)
     {
-        printf("Failed to define SensoryType resource\n");
+        printf("Failed to define SensorType resource\n");
         return 1;
     }
 
@@ -281,6 +283,12 @@ int DefineDigitalInputObject(AwaStaticClient *awaClient)
     {
         printf("Failed to define CounterReset resource\n");
         return 1;
+    }
+
+    for (i = 0; i < DIGITAL_INPUTS; i++)
+    {
+        AwaStaticClient_CreateObjectInstance(awaClient, IPSO_DIGITAL_INPUT_OBJECT, i);
+        AwaStaticClient_CreateResource(awaClient, IPSO_DIGITAL_INPUT_OBJECT, i, IPSO_DIGITAL_INPUT_COUNTER);
     }
     return 0;
 }
