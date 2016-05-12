@@ -36,10 +36,29 @@
 #ifndef LWM2M_CLIENT_IPSO_DIGITAL_INPUT_H_
 #define LWM2M_CLIENT_IPSO_DIGITAL_INPUT_H_
 
-#include "lwm2m_core.h"
+#include "awa/static.h"
 
-int DigitalInput_RegisterDigitalInputObject(Lwm2mContextType * context);
-int DigitalInput_AddDigitialInput(Lwm2mContextType * context, ObjectInstanceIDType objectInstanceID);
-int DigitalInput_IncrementCounter(Lwm2mContextType * context, ObjectInstanceIDType objectInstanceID);
+/***************************************************************************************************
+ * Macros
+ **************************************************************************************************/
+
+#define IPSO_DIGITAL_INPUT_OBJECT               3200
+#define IPSO_DIGITAL_INPUT_STATE                5500
+#define IPSO_DIGITAL_INPUT_COUNTER              5501
+#define IPSO_DIGITAL_INPUT_POLARITY             5502
+#define IPSO_DIGITAL_INPUT_DEBOUNCE_PERIOD      5503
+#define IPSO_DIGITAL_INPUT_EDGE_SELECTION       5504
+#define IPSO_DIGITAL_INPUT_COUNTER_RESET        5505
+#define IPSO_APPLICATION_TYPE                   5750
+#define IPSO_SENSOR_TYPE                        5751
+
+#define DIGITAL_INPUTS                          2
+
+/***************************************************************************************************
+ * Functions
+ **************************************************************************************************/
+
+int DefineDigitalInputObject(AwaStaticClient *awaClient);
+int DigitalInput_IncrementCounter(AwaStaticClient *awaClient, AwaObjectInstanceID objectInstanceID);
 
 #endif /* LWM2M_CLIENT_IPSO_DIGITAL_INPUT_H_ */
