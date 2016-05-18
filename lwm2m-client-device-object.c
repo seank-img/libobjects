@@ -113,7 +113,7 @@ AwaResult executeHandler(AwaStaticClient *client, AwaOperation operation, AwaObj
     AwaResult result = AwaResult_Unspecified;
 
 
-    printf("EXECUTE handler operation %d\n", operation);
+    printf("[INFO] EXECUTE handler operation %d\n", operation);
 
     switch(operation)
     {

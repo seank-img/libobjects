@@ -81,7 +81,7 @@ AwaResult accessHandler(AwaStaticClient *client, AwaOperation operation, AwaObje
 
 	if (!((objectID == FLOWM2M_FLOW_ACCESS_OBJECT) && (objectInstanceID >= 0) && (objectInstanceID < FLOW_ACCESS_INSTANCES)))
 	{
-		printf("incorrect flow access object data\n");
+		printf("[ERROR] incorrect flow access object data\n");
 		return result;
 	}
 
@@ -135,7 +135,7 @@ AwaResult accessHandler(AwaStaticClient *client, AwaOperation operation, AwaObje
 					break;
 
 				default:
-					printf("\n invalid res id for flow access - read op");
+					printf("[ERROR] invalid res id for flow access - read op");
 					break;
 			}
 			break;
@@ -184,7 +184,7 @@ AwaResult accessHandler(AwaStaticClient *client, AwaOperation operation, AwaObje
 				break;
 
 		default:
-			printf("flow access - unknown operation\n");
+			printf("[INFO] flow access - unknown operation\n");
 			break;
 	}
 	return result;
@@ -197,7 +197,7 @@ int DefineFlowAccessObject(AwaStaticClient *awaClient)
 	error = AwaStaticClient_DefineObjectWithHandler(awaClient, "FlowAccess", FLOWM2M_FLOW_ACCESS_OBJECT, 0, FLOW_ACCESS_INSTANCES, accessHandler);
 	if (error != AwaError_Success)
 	{
-		printf("Failed to register flow access object\n");
+		printf("[ERROR] Failed to register flow access object\n");
 		return 1;
 	}
 
@@ -205,7 +205,7 @@ int DefineFlowAccessObject(AwaStaticClient *awaClient)
 		accessHandler);
 	if (error != AwaError_Success)
 	{
-		printf("Failed to define URL resource\n");
+		printf("[ERROR] Failed to define URL resource\n");
 		return 1;
 	}
 
@@ -213,7 +213,7 @@ int DefineFlowAccessObject(AwaStaticClient *awaClient)
 		accessHandler);
 	if (error != AwaError_Success)
 	{
-		printf("Failed to define CustomerKey resource\n");
+		printf("[ERROR] Failed to define CustomerKey resource\n");
 		return 1;
 	}
 
@@ -221,7 +221,7 @@ int DefineFlowAccessObject(AwaStaticClient *awaClient)
 		accessHandler);
 	if (error != AwaError_Success)
 	{
-		printf("Failed to define CustomerSecret resource\n");
+		printf("[ERROR] Failed to define CustomerSecret resource\n");
 		return 1;
 	}
 
@@ -229,7 +229,7 @@ int DefineFlowAccessObject(AwaStaticClient *awaClient)
 		accessHandler);
 	if (error != AwaError_Success)
 	{
-		printf("Failed to define RememberMeToken resource\n");
+		printf("[ERROR] Failed to define RememberMeToken resource\n");
 		return 1;
 	}
 
@@ -237,7 +237,7 @@ int DefineFlowAccessObject(AwaStaticClient *awaClient)
 		accessHandler);
 	if (error != AwaError_Success)
 	{
-		printf("Failed to define RememberMeTokenExpiry resource\n");
+		printf("[ERROR] Failed to define RememberMeTokenExpiry resource\n");
 		return 1;
 	}
 

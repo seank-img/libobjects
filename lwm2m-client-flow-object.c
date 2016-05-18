@@ -205,7 +205,7 @@ AwaResult handler(AwaStaticClient *client, AwaOperation operation, AwaObjectID o
 					*dataSize = sizeof(flow[objectInstanceID].Status);
 					break;
 				default:
-					printf("Invalid resource id %d\n", resourceID);
+					printf("[ERROR] Invalid resource id %d\n", resourceID);
 					break;
 			}
 			result = AwaResult_SuccessContent;
@@ -242,7 +242,7 @@ AwaResult handler(AwaStaticClient *client, AwaOperation operation, AwaObjectID o
 				case FLOWM2M_FLOW_OBJECT_FCAP:
 				    memcpy(flow[objectInstanceID].FCAP, *dataPointer, *dataSize);
 					flow[objectInstanceID].FCAP[*dataSize] = '\0';
-					printf("FCAP = %s\n", flow[objectInstanceID].FCAP);
+					printf("[INFO] FCAP = %s\n", flow[objectInstanceID].FCAP);
 					break;
 
 				case FLOWM2M_FLOW_OBJECT_LICENSEEID:
@@ -265,7 +265,7 @@ AwaResult handler(AwaStaticClient *client, AwaOperation operation, AwaObjectID o
 
 				case FLOWM2M_FLOW_OBJECT_STATUS:
 					flow[objectInstanceID].Status = *((AwaInteger*)(*dataPointer));
-					printf("Status: %li\n", flow[objectInstanceID].Status);
+					printf("[INFO] Status: %li\n", flow[objectInstanceID].Status);
 					*changed = true;
 					break;
 
@@ -277,7 +277,7 @@ AwaResult handler(AwaStaticClient *client, AwaOperation operation, AwaObjectID o
 			break;
 
 		default:
-			printf("default case for handler, operation - %d\n", operation);
+			printf("[INFO] default case for handler, operation - %d\n", operation);
 			break;
 	}
 
@@ -286,18 +286,18 @@ AwaResult handler(AwaStaticClient *client, AwaOperation operation, AwaObjectID o
         if(flow[objectInstanceID].HashIterations > 0 && flow[objectInstanceID].LicenseeChallengeSize > 0 && flow[objectInstanceID].LicenseeHashSize == 0
             && (resourceID == FLOWM2M_FLOW_OBJECT_HASHITERATIONS || (resourceID == FLOWM2M_FLOW_OBJECT_LICENSEECHALLENGE)))
         {
-            printf("Calculating licensee hash with %li iterations...\n", flow[objectInstanceID].HashIterations);
+            printf("[INFO] Calculating licensee hash with %li iterations...\n", flow[objectInstanceID].HashIterations);
 
             if (CalculateLicenseeHash(licenseeSecret, flow[objectInstanceID].LicenseeHash, flow[objectInstanceID].LicenseeChallenge, flow[objectInstanceID].LicenseeChallengeSize, flow[objectInstanceID].HashIterations))
             {
-                printf("Calculated hash, writing Licensee Hash resource...\n");
+                printf("[INFO] Calculated hash, writing Licensee Hash resource...\n");
                 flow[objectInstanceID].LicenseeHashSize = SHA256_HASH_LENGTH;
                 AwaStaticClient_CreateResource(client, FLOWM2M_FLOW_OBJECT, 0, FLOWM2M_FLOW_OBJECT_LICENSEEHASH);
                 AwaStaticClient_ResourceChanged(client, FLOWM2M_FLOW_OBJECT, 0, FLOWM2M_FLOW_OBJECT_LICENSEEHASH);
             }
             else
             {
-                printf("Licensee secret is invalid\n");
+                printf("[ERROR] Licensee secret is invalid\n");
             }
         }
 	}
@@ -312,7 +312,7 @@ int DefineFlowObject(AwaStaticClient *awaClient)
 	error = AwaStaticClient_DefineObjectWithHandler(awaClient, "Flow", FLOWM2M_FLOW_OBJECT, 0, FLOW_INSTANCES, handler);
 	if (error != AwaError_Success)
 	{
-		printf("Failed to register flow bject\n");
+		printf("[ERROR] Failed to register flow bject\n");
 		return 1;
 	}
 
@@ -320,7 +320,7 @@ int DefineFlowObject(AwaStaticClient *awaClient)
 	handler);
 	if (error != AwaError_Success)
 	{
-		printf("Failed to define deviceID resource\n");
+		printf("[ERROR] Failed to define deviceID resource\n");
 		return 1;
 	}
 
@@ -328,7 +328,7 @@ int DefineFlowObject(AwaStaticClient *awaClient)
 		handler);
 	if (error != AwaError_Success)
 	{
-		printf("Failed to define parentID resource\n");
+		printf("[ERROR] Failed to define parentID resource\n");
 		return 1;
 	}
 
@@ -336,7 +336,7 @@ int DefineFlowObject(AwaStaticClient *awaClient)
 		handler);
 	if (error != AwaError_Success)
 	{
-		printf("Failed to define device type resource\n");
+		printf("[ERROR] Failed to define device type resource\n");
 		return 1;
 	}
 
@@ -344,7 +344,7 @@ int DefineFlowObject(AwaStaticClient *awaClient)
 		handler);
 	if (error != AwaError_Success)
 	{
-		printf("Failed to define name resource\n");
+		printf("[ERROR] Failed to define name resource\n");
 		return 1;
 	}
 
@@ -352,7 +352,7 @@ int DefineFlowObject(AwaStaticClient *awaClient)
 		handler);
 	if (error != AwaError_Success)
 	{
-		printf("Failed to define description resource\n");
+		printf("[ERROR] Failed to define description resource\n");
 		return 1;
 	}
 
@@ -360,7 +360,7 @@ int DefineFlowObject(AwaStaticClient *awaClient)
 		handler);
 	if (error != AwaError_Success)
 	{
-		printf("Failed to define FCAP resource\n");
+		printf("[ERROR] Failed to define FCAP resource\n");
 		return 1;
 	}
 
@@ -368,7 +368,7 @@ int DefineFlowObject(AwaStaticClient *awaClient)
 		handler);
 	if (error != AwaError_Success)
 	{
-		printf("Failed to define LicenseeID resource\n");
+		printf("[ERROR] Failed to define LicenseeID resource\n");
 		return 1;
 	}
 
@@ -376,7 +376,7 @@ int DefineFlowObject(AwaStaticClient *awaClient)
 		handler);
 	if (error != AwaError_Success)
 	{
-		printf("Failed to define LicenseeChallenge resource\n");
+		printf("[ERROR] Failed to define LicenseeChallenge resource\n");
 		return 1;
 	}
 
@@ -384,7 +384,7 @@ int DefineFlowObject(AwaStaticClient *awaClient)
 		handler);
 	if (error != AwaError_Success)
 	{
-		printf("Failed to define HashIterations resource\n");
+		printf("[ERROR] Failed to define HashIterations resource\n");
 		return 1;
 	}
 
@@ -392,7 +392,7 @@ int DefineFlowObject(AwaStaticClient *awaClient)
 		handler);
 	if (error != AwaError_Success)
 	{
-		printf("Failed to define LicenseeHash resource\n");
+		printf("[ERROR] Failed to define LicenseeHash resource\n");
 		return 1;
 	}
 
@@ -400,7 +400,7 @@ int DefineFlowObject(AwaStaticClient *awaClient)
 		handler);
 	if (error != AwaError_Success)
 	{
-		printf("Failed to define Status resource\n");
+		printf("[ERROR] Failed to define Status resource\n");
 		return 1;
 	}
 
