@@ -74,172 +74,20 @@ FlowAccessObject flowAccess[FLOW_ACCESS_INSTANCES];
  * Implementation - Public
  **************************************************************************************************/
 
-AwaResult accessHandler(AwaStaticClient *client, AwaOperation operation, AwaObjectID objectID, AwaObjectInstanceID objectInstanceID,
-	AwaResourceID resourceID, AwaResourceInstanceID resourceInstanceID, void **dataPointer, size_t *dataSize, bool *changed)
-{
-	AwaResult result = AwaResult_InternalError;
-
-	if (!((objectID == FLOWM2M_FLOW_ACCESS_OBJECT) && (objectInstanceID >= 0) && (objectInstanceID < FLOW_ACCESS_INSTANCES)))
-	{
-		printf("[ERROR] incorrect flow access object data\n");
-		return result;
-	}
-
-	switch (operation)
-	{
-        case AwaOperation_DeleteObjectInstance:
-            result = AwaResult_SuccessDeleted;
-            memset(&flowAccess[objectInstanceID], 0, sizeof(flowAccess[objectInstanceID]));
-            break;
-
-		case AwaOperation_CreateObjectInstance:
-			result = AwaResult_SuccessCreated;
-			memset(&flowAccess[objectInstanceID], 0, sizeof(flowAccess[objectInstanceID]));
-			break;
-
-		case AwaOperation_CreateResource:
-			result = AwaResult_SuccessCreated;
-			break;
-
-		case AwaOperation_Read:
-			switch (resourceID)
-			{
-				case FLOWM2M_FLOW_ACCESS_OBJECT_URL:
-					*dataPointer = flowAccess[objectInstanceID].URL;
-					*dataSize = strlen(flowAccess[objectInstanceID].URL) ;
-					result = AwaResult_SuccessContent;
-					break;
-
-				case FLOWM2M_FLOW_ACCESS_OBJECT_CUSTOMERKEY:
-					*dataPointer = flowAccess[objectInstanceID].CustomerKey;
-					*dataSize = strlen(flowAccess[objectInstanceID].CustomerKey);
-					result = AwaResult_SuccessContent;
-					break;
-
-				case FLOWM2M_FLOW_ACCESS_OBJECT_CUSTOMERSECRET:
-					*dataPointer = flowAccess[objectInstanceID].CustomerSecret;
-					*dataSize = strlen(flowAccess[objectInstanceID].CustomerSecret);
-					result = AwaResult_SuccessContent;
-					break;
-
-				case FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKEN:
-					*dataPointer = flowAccess[objectInstanceID].RememberMeToken;
-					*dataSize = strlen(flowAccess[objectInstanceID].RememberMeToken);
-					result = AwaResult_SuccessContent;
-					break;
-
-				case FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKENEXPIRY:
-					*dataPointer = &flowAccess[objectInstanceID].RememberMeTokenExpiry;
-					*dataSize = sizeof(flowAccess[objectInstanceID].RememberMeTokenExpiry);
-					result = AwaResult_SuccessContent;
-					break;
-
-				default:
-					printf("[ERROR] invalid res id for flow access - read op");
-					break;
-			}
-			break;
-
-			case AwaOperation_Write:
-				switch (resourceID)
-				{
-					case FLOWM2M_FLOW_ACCESS_OBJECT_URL:
-						memcpy(flowAccess[objectInstanceID].URL, *dataPointer, *dataSize);
-						flowAccess[objectInstanceID].URL[*dataSize] = '\0';
-						*changed = true;
-						result = AwaResult_SuccessChanged;
-						break;
-
-					case FLOWM2M_FLOW_ACCESS_OBJECT_CUSTOMERKEY:
-					    memcpy(flowAccess[objectInstanceID].CustomerKey,*dataPointer, *dataSize);
-					    flowAccess[objectInstanceID].CustomerKey[*dataSize] = '\0';
-						*changed = true;
-						result = AwaResult_SuccessChanged;
-						break;
-
-					case FLOWM2M_FLOW_ACCESS_OBJECT_CUSTOMERSECRET:
-					    memcpy(flowAccess[objectInstanceID].CustomerSecret, *dataPointer, *dataSize);
-					    flowAccess[objectInstanceID].CustomerSecret[*dataSize] = '\0';
-						*changed = true;
-						result = AwaResult_SuccessChanged;
-						break;
-
-					case FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKEN:
-					    memcpy(flowAccess[objectInstanceID].RememberMeToken, *dataPointer, *dataSize);
-					    flowAccess[objectInstanceID].RememberMeToken[*dataSize] = '\0';
-						*changed = true;
-						result = AwaResult_SuccessChanged;
-						break;
-
-					case FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKENEXPIRY:
-						flowAccess[objectInstanceID].RememberMeTokenExpiry = *((AwaTime *)*dataPointer);
-						*changed = true;
-						result = AwaResult_SuccessChanged;
-						break;
-
-					default:
-						printf("invalid res id %d for flow access - write op\n", resourceID);
-						break;
-				}
-				break;
-
-		default:
-			printf("[INFO] flow access - unknown operation\n");
-			break;
-	}
-	return result;
-}
-
 int DefineFlowAccessObject(AwaStaticClient *awaClient)
 {
-	AwaError error;
+	AwaStaticClient_DefineObject(awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, "FlowAccess", 0, FLOW_ACCESS_INSTANCES);
 
-	error = AwaStaticClient_DefineObjectWithHandler(awaClient, "FlowAccess", FLOWM2M_FLOW_ACCESS_OBJECT, 0, FLOW_ACCESS_INSTANCES, accessHandler);
-	if (error != AwaError_Success)
-	{
-		printf("[ERROR] Failed to register flow access object\n");
-		return 1;
-	}
-
-	error = AwaStaticClient_DefineResourceWithHandler(awaClient, "URL", FLOWM2M_FLOW_ACCESS_OBJECT, FLOWM2M_FLOW_ACCESS_OBJECT_URL, AwaResourceType_String, 0, 1, AwaResourceOperations_ReadWrite,
-		accessHandler);
-	if (error != AwaError_Success)
-	{
-		printf("[ERROR] Failed to define URL resource\n");
-		return 1;
-	}
-
-	error = AwaStaticClient_DefineResourceWithHandler(awaClient, "CustomerKey",  FLOWM2M_FLOW_ACCESS_OBJECT, FLOWM2M_FLOW_ACCESS_OBJECT_CUSTOMERKEY, AwaResourceType_String, 0, 1, AwaResourceOperations_ReadWrite,
-		accessHandler);
-	if (error != AwaError_Success)
-	{
-		printf("[ERROR] Failed to define CustomerKey resource\n");
-		return 1;
-	}
-
-	error = AwaStaticClient_DefineResourceWithHandler(awaClient, "CustomerSecret", FLOWM2M_FLOW_ACCESS_OBJECT, FLOWM2M_FLOW_ACCESS_OBJECT_CUSTOMERSECRET, AwaResourceType_String, 0, 1, AwaResourceOperations_ReadWrite,
-		accessHandler);
-	if (error != AwaError_Success)
-	{
-		printf("[ERROR] Failed to define CustomerSecret resource\n");
-		return 1;
-	}
-
-	error = AwaStaticClient_DefineResourceWithHandler(awaClient, "RememberMeToken", FLOWM2M_FLOW_ACCESS_OBJECT, FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKEN, AwaResourceType_String, 0, 1, AwaResourceOperations_ReadWrite,
-		accessHandler);
-	if (error != AwaError_Success)
-	{
-		printf("[ERROR] Failed to define RememberMeToken resource\n");
-		return 1;
-	}
-
-	error = AwaStaticClient_DefineResourceWithHandler(awaClient, "RememberMeTokenExpiry", FLOWM2M_FLOW_ACCESS_OBJECT, FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKENEXPIRY, AwaResourceType_Time, 0, 1, AwaResourceOperations_ReadWrite,
-		accessHandler);
-	if (error != AwaError_Success)
-	{
-		printf("[ERROR] Failed to define RememberMeTokenExpiry resource\n");
-		return 1;
-	}
+	AwaStaticClient_DefineResource(               awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, FLOWM2M_FLOW_ACCESS_OBJECT_URL,                   "URL",                   AwaResourceType_String, 0, 1, AwaResourceOperations_ReadWrite);
+	AwaStaticClient_SetResourceStorageWithPointer(awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, FLOWM2M_FLOW_ACCESS_OBJECT_URL,                   flowAccess[0].URL, sizeof(flowAccess[0].URL), 0);
+	AwaStaticClient_DefineResource(               awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, FLOWM2M_FLOW_ACCESS_OBJECT_CUSTOMERKEY,           "CustomerKey",           AwaResourceType_String, 0, 1, AwaResourceOperations_ReadWrite);
+	AwaStaticClient_SetResourceStorageWithPointer(awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, FLOWM2M_FLOW_ACCESS_OBJECT_CUSTOMERKEY,           flowAccess[0].CustomerKey, sizeof(flowAccess[0].CustomerKey), 0);
+	AwaStaticClient_DefineResource(               awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, FLOWM2M_FLOW_ACCESS_OBJECT_CUSTOMERSECRET,        "CustomerSecret",        AwaResourceType_String, 0, 1, AwaResourceOperations_ReadWrite);
+	AwaStaticClient_SetResourceStorageWithPointer(awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, FLOWM2M_FLOW_ACCESS_OBJECT_CUSTOMERSECRET,        flowAccess[0].CustomerSecret, sizeof(flowAccess[0].CustomerSecret), 0);
+	AwaStaticClient_DefineResource(               awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKEN,       "RememberMeToken",       AwaResourceType_String, 0, 1, AwaResourceOperations_ReadWrite);
+	AwaStaticClient_SetResourceStorageWithPointer(awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKEN,       flowAccess[0].RememberMeToken, sizeof(flowAccess[0].RememberMeToken), 0);
+	AwaStaticClient_DefineResource(               awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKENEXPIRY, "RememberMeTokenExpiry", AwaResourceType_Time,   0, 1, AwaResourceOperations_ReadWrite);
+	AwaStaticClient_SetResourceStorageWithPointer(awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKENEXPIRY, flowAccess[0].RememberMeTokenExpiry, sizeof(flowAccess[0].RememberMeTokenExpiry), 0);
 
 	return 0;
 }
