@@ -41,35 +41,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
-#include "lwm2m_core.h"
-#include "coap_abstraction.h"
-
-/***************************************************************************************************
- * Definitions
- **************************************************************************************************/
-
-#define IPSO_DIGITAL_INPUT_OBJECT				3200
-#define IPSO_DIGITAL_INPUT_STATE				5500
-#define IPSO_DIGITAL_INPUT_COUNTER				5501
-#define IPSO_DIGITAL_INPUT_POLARITY				5502
-#define IPSO_DIGITAL_INPUT_DEBOUNCE_PERIOD		5503
-#define IPSO_DIGITAL_INPUT_EDGE_SELECTION		5504
-#define IPSO_DIGITAL_INPUT_COUNTER_RESET		5505
-
-#define IPSO_APPICATION_TYPE					5750
-#define IPSO_SENSOR_TYPE						5751
-
-#define DIGITAL_INPUTS							2
-
-#define MAX_STR_SIZE							128
-
-#define REGISTER_DIGITAL_INPUT_RESOURCE(context, name, id, type, operations) \
-	REGISTER_RESOURCE(context, name, IPSO_DIGITAL_INPUT_OBJECT, id, type,    \
-		MultipleInstancesEnum_Single, MandatoryEnum_Optional, operations,    \
-		&DigitalInputResourceOperationHandlers)
-
-#define CREATE_DIGITAL_INPUT_OPTIONAL_RESOURCE(context, objectInstanceId, resourcId) \
-	CREATE_OPTIONAL_RESOURCE(context, IPSO_DIGITAL_INPUT_OBJECT, objectInstanceId, resourcId)
+#include <awa/static.h>
+#include "lwm2m-client-ipso-digital-input.h"
 
 /***************************************************************************************************
  * Typedefs
@@ -77,62 +50,18 @@
 
 typedef struct
 {
-	bool State;
-	int64_t Counter;
-	bool Polarity;
-	int64_t DebouncePeriod;
-	int64_t EdgeSelection;
-	char ApplicationType[MAX_STR_SIZE];
-	char SensoryType[MAX_STR_SIZE];
+    AwaBoolean State;
+    AwaInteger Counter;
+    AwaBoolean Polarity;
+    AwaTime DebouncePeriod;
+    AwaInteger EdgeSelection;
+    char ApplicationType[128];
+    char SensorType[128];
 } IPSODigitalInput;
-
-/***************************************************************************************************
- * Prototypes
- **************************************************************************************************/
-
-static int DigitalInput_ResourceReadHandler(void *context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID,
-	ResourceInstanceIDType resourceInstanceID, uint8_t *destBuffer, int destBufferLen);
-
-static int DigitalInput_ResourceGetLengthHandler(void *context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID,
-	ResourceInstanceIDType resourceInstanceID);
-
-static int DigitalInput_ResourceWriteHandler(void *context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID,
-	ResourceInstanceIDType resourceInstanceID, uint8_t *srcBuffer, int srcBufferLen, bool *changed);
-
-static int DigitalInput_ResourceExecuteHandler(void *context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID, uint8_t *srcBuffer,
-	int srcBufferLen);
-
-static int DigitalInput_ResourceCreateHandler(void *context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID);
-
-static int DigitalInput_ObjectCreateInstanceHandler(void *context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID);
-
-static int DigitalInput_ObjectDeleteHandler(void *context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID);
 
 /***************************************************************************************************
  * Globals
  **************************************************************************************************/
-
-static ObjectOperationHandlers DigitalInputObjectOperationHandlers =
-{
-	.CreateInstance = DigitalInput_ObjectCreateInstanceHandler,
-	.Delete = DigitalInput_ObjectDeleteHandler,
-};
-
-static ResourceOperationHandlers DigitalInputResourceOperationHandlers =
-{
-	.Read = DigitalInput_ResourceReadHandler,
-	.GetLength = DigitalInput_ResourceGetLengthHandler,
-	.Write = DigitalInput_ResourceWriteHandler,
-	.CreateOptionalResource = DigitalInput_ResourceCreateHandler,
-	.Execute = DigitalInput_ResourceExecuteHandler,
-};
 
 static IPSODigitalInput digitalInputs[DIGITAL_INPUTS];
 
@@ -140,305 +69,242 @@ static IPSODigitalInput digitalInputs[DIGITAL_INPUTS];
  * Implementation
  **************************************************************************************************/
 
-static int DigitalInput_ObjectCreateInstanceHandler(void *context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID)
+static AwaResult digitalInputHandler(AwaStaticClient *client, AwaOperation operation, AwaObjectID objectID, AwaObjectInstanceID objectInstanceID,
+     AwaResourceID resourceID, AwaResourceInstanceID resourceInstanceID, void **dataPointer, size_t *dataSize, bool *changed)
 {
-	if(objectInstanceID >= DIGITAL_INPUTS)
-	{
-		Lwm2m_Error("DigitalInput_ResourceCreateHandler instance number %d out of range (max %d)",
-			objectInstanceID, DIGITAL_INPUTS - 1);
-		return -1;
-	}
-	return objectInstanceID;
+    AwaResult result = AwaResult_InternalError;
+    if (!((objectID == IPSO_DIGITAL_INPUT_OBJECT) && (objectInstanceID >= 0) && (objectInstanceID < DIGITAL_INPUTS)))
+    {
+        printf("Incorrect object data\n");
+        return result;
+    }
+
+    switch (operation)
+    {
+        case AwaOperation_DeleteObjectInstance:
+            result = AwaResult_SuccessDeleted;
+            memset(&digitalInputs[objectInstanceID], 0, sizeof(digitalInputs[objectInstanceID]));
+            break;
+
+        case AwaOperation_CreateObjectInstance:
+            result = AwaResult_SuccessCreated;
+            memset(&digitalInputs[objectInstanceID], 0, sizeof(digitalInputs[objectInstanceID]));
+            break;
+
+        case AwaOperation_CreateResource:
+            result = AwaResult_SuccessCreated;
+            break;
+
+        case AwaOperation_Execute:
+            if (resourceID == IPSO_DIGITAL_INPUT_COUNTER_RESET)
+            {
+                digitalInputs[objectInstanceID].Counter = 0;
+                AwaStaticClient_ResourceChanged(client, IPSO_DIGITAL_INPUT_OBJECT, objectInstanceID, IPSO_DIGITAL_INPUT_COUNTER);
+                result = AwaResult_Success;
+            }
+            else
+            {
+                printf("\n Invalid resource ID for DigitalInput execute operation");
+                result = AwaResult_InternalError;
+            }
+            break;
+
+        case AwaOperation_Read:
+            result = AwaResult_SuccessContent;
+            switch (resourceID)
+            {
+                case IPSO_DIGITAL_INPUT_STATE:
+                    *dataPointer = &digitalInputs[objectInstanceID].State;
+                    *dataSize = sizeof(digitalInputs[objectInstanceID].State) ;
+                    break;
+
+                case IPSO_DIGITAL_INPUT_COUNTER:
+                    *dataPointer = &digitalInputs[objectInstanceID].Counter;
+                    *dataSize = sizeof(digitalInputs[objectInstanceID].Counter) ;
+                    break;
+
+                case IPSO_DIGITAL_INPUT_POLARITY:
+                    *dataPointer = &digitalInputs[objectInstanceID].Polarity;
+                    *dataSize = sizeof(digitalInputs[objectInstanceID].Polarity) ;
+                    break;
+
+                case IPSO_DIGITAL_INPUT_DEBOUNCE_PERIOD:
+                    *dataPointer = &digitalInputs[objectInstanceID].DebouncePeriod;
+                    *dataSize = sizeof(digitalInputs[objectInstanceID].DebouncePeriod) ;
+                    break;
+
+                case IPSO_DIGITAL_INPUT_EDGE_SELECTION:
+                    *dataPointer = &digitalInputs[objectInstanceID].EdgeSelection;
+                    *dataSize = sizeof(digitalInputs[objectInstanceID].EdgeSelection) ;
+                    break;
+
+                case IPSO_APPLICATION_TYPE:
+                    *dataPointer = digitalInputs[objectInstanceID].ApplicationType;
+                    *dataSize = strlen(digitalInputs[objectInstanceID].ApplicationType) ;
+                    break;
+
+                case IPSO_SENSOR_TYPE:
+                    *dataPointer = digitalInputs[objectInstanceID].SensorType;
+                    *dataSize = strlen(digitalInputs[objectInstanceID].SensorType) ;
+                    break;
+
+                default:
+                    printf("\n Invalid resource ID for DigitalInput read operation");
+                    result = AwaResult_InternalError;
+                    break;
+            }
+            break;
+
+        case AwaOperation_Write:
+            *changed = true;
+            result = AwaResult_SuccessChanged;
+            switch (resourceID)
+            {
+                case IPSO_DIGITAL_INPUT_STATE:
+                    digitalInputs[objectInstanceID].State = *((AwaBoolean *)*dataPointer);
+                    break;
+
+                case IPSO_DIGITAL_INPUT_COUNTER:
+                    digitalInputs[objectInstanceID].Counter = *((AwaInteger *)*dataPointer);
+                    break;
+
+                case IPSO_DIGITAL_INPUT_POLARITY:
+                    digitalInputs[objectInstanceID].Polarity = *((AwaBoolean *)*dataPointer);
+                    break;
+
+                case IPSO_DIGITAL_INPUT_DEBOUNCE_PERIOD:
+                    digitalInputs[objectInstanceID].DebouncePeriod = *((AwaTime *)*dataPointer);
+                    break;
+
+                case IPSO_DIGITAL_INPUT_EDGE_SELECTION:
+                    digitalInputs[objectInstanceID].EdgeSelection = *((AwaInteger *)*dataPointer);
+                    break;
+
+                case IPSO_APPLICATION_TYPE:
+                    if(*dataSize < sizeof(digitalInputs[objectInstanceID].ApplicationType))
+                    {
+                        memcpy(digitalInputs[objectInstanceID].ApplicationType, *dataPointer, *dataSize);
+                        digitalInputs[objectInstanceID].ApplicationType[*dataSize] = '\0';
+                    }
+                    else
+                    {
+                        result = AwaResult_BadRequest;
+                    }
+                    break;
+
+                case IPSO_SENSOR_TYPE:
+                    if(*dataSize < sizeof(digitalInputs[objectInstanceID].SensorType))
+                    {
+                        memcpy(digitalInputs[objectInstanceID].SensorType, *dataPointer, *dataSize);
+                        digitalInputs[objectInstanceID].SensorType[*dataSize] = '\0';
+                    }
+                    else
+                    {
+                        result = AwaResult_BadRequest;
+                    }
+                    break;
+
+                default:
+                    printf("\n Invalid resource ID for DigitalInput write operation");
+                    result = AwaResult_InternalError;
+                    break;
+            }
+            break;
+        default:
+            printf("DigitalInput - unknown operation\n");
+            break;
+    }
+    return result;
 }
 
-static int DigitalInput_ResourceCreateHandler(void *context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID)
+int DefineDigitalInputObject(AwaStaticClient *awaClient)
 {
-	return 0;
+    AwaError error;
+    int i;
+
+    error = AwaStaticClient_DefineObjectWithHandler(awaClient, "DigitalInput", IPSO_DIGITAL_INPUT_OBJECT, 0, DIGITAL_INPUTS, digitalInputHandler);
+    if (error != AwaError_Success)
+    {
+        printf("Failed to register flow access object\n");
+        return 1;
+    }
+
+    error = AwaStaticClient_DefineResourceWithHandler(awaClient, "State", IPSO_DIGITAL_INPUT_OBJECT, IPSO_DIGITAL_INPUT_STATE, AwaResourceType_Boolean, 1, 1, AwaResourceOperations_ReadOnly, digitalInputHandler);
+    if (error != AwaError_Success)
+    {
+        printf("Failed to define State resource\n");
+        return 1;
+    }
+
+    error = AwaStaticClient_DefineResourceWithHandler(awaClient, "Counter", IPSO_DIGITAL_INPUT_OBJECT, IPSO_DIGITAL_INPUT_COUNTER, AwaResourceType_Integer, 0, 1, AwaResourceOperations_ReadOnly, digitalInputHandler);
+    if (error != AwaError_Success)
+    {
+        printf("Failed to define Counter resource\n");
+        return 1;
+    }
+
+    error = AwaStaticClient_DefineResourceWithHandler(awaClient, "Polarity", IPSO_DIGITAL_INPUT_OBJECT, IPSO_DIGITAL_INPUT_POLARITY, AwaResourceType_Boolean, 0, 1, AwaResourceOperations_ReadWrite, digitalInputHandler);
+    if (error != AwaError_Success)
+    {
+        printf("Failed to define Polarity resource\n");
+        return 1;
+    }
+
+    error = AwaStaticClient_DefineResourceWithHandler(awaClient, "DebouncePeriod", IPSO_DIGITAL_INPUT_OBJECT, IPSO_DIGITAL_INPUT_DEBOUNCE_PERIOD, AwaResourceType_Time, 0, 1, AwaResourceOperations_ReadWrite, digitalInputHandler);
+    if (error != AwaError_Success)
+    {
+        printf("Failed to define DebouncePeriod resource\n");
+        return 1;
+    }
+
+    error = AwaStaticClient_DefineResourceWithHandler(awaClient, "EdgeSelection", IPSO_DIGITAL_INPUT_OBJECT, IPSO_DIGITAL_INPUT_EDGE_SELECTION, AwaResourceType_Integer, 0, 1, AwaResourceOperations_ReadWrite, digitalInputHandler);
+    if (error != AwaError_Success)
+    {
+        printf("Failed to define EdgeSelection resource\n");
+        return 1;
+    }
+
+    error = AwaStaticClient_DefineResourceWithHandler(awaClient, "ApplicationType", IPSO_DIGITAL_INPUT_OBJECT, IPSO_APPLICATION_TYPE, AwaResourceType_String, 0, 1, AwaResourceOperations_ReadOnly, digitalInputHandler);
+    if (error != AwaError_Success)
+    {
+        printf("Failed to define ApplicationType resource\n");
+        return 1;
+    }
+
+    error = AwaStaticClient_DefineResourceWithHandler(awaClient, "SensorType", IPSO_DIGITAL_INPUT_OBJECT , IPSO_SENSOR_TYPE, AwaResourceType_String, 0, 1, AwaResourceOperations_ReadOnly, digitalInputHandler);
+    if (error != AwaError_Success)
+    {
+        printf("Failed to define SensorType resource\n");
+        return 1;
+    }
+
+    error = AwaStaticClient_DefineResourceWithHandler(awaClient, "CounterReset", IPSO_DIGITAL_INPUT_OBJECT , IPSO_DIGITAL_INPUT_COUNTER_RESET, AwaResourceType_Opaque, 0, 1, AwaResourceOperations_Execute, digitalInputHandler);
+    if (error != AwaError_Success)
+    {
+        printf("Failed to define CounterReset resource\n");
+        return 1;
+    }
+
+    for (i = 0; i < DIGITAL_INPUTS; i++)
+    {
+        AwaStaticClient_CreateObjectInstance(awaClient, IPSO_DIGITAL_INPUT_OBJECT, i);
+        AwaStaticClient_CreateResource(awaClient, IPSO_DIGITAL_INPUT_OBJECT, i, IPSO_DIGITAL_INPUT_COUNTER);
+    }
+    return 0;
 }
 
-static int DigitalInput_ObjectDeleteHandler(void *context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID)
+
+int DigitalInput_IncrementCounter(AwaStaticClient *awaClient, AwaObjectInstanceID objectInstanceID)
 {
-	if (objectID != IPSO_DIGITAL_INPUT_OBJECT)
-	{
-		Lwm2m_Error("DigitalInput_ObjectDeleteHandler Invalid OIR: %d/%d/%d\n", objectID,
-			objectInstanceID, resourceID);
-		return -1;
-	}
-
-	if(objectInstanceID >= DIGITAL_INPUTS)
-	{
-		Lwm2m_Error("DigitalInput_ObjectDeleteHandler instance number %d out of range (max %d)",
-			objectInstanceID, DIGITAL_INPUTS - 1);
-		return -1;
-	}
-
-	if (resourceID == -1)
-	{
-		memset(&digitalInputs[objectInstanceID], 0, sizeof(IPSODigitalInput));
-	}
-	else
-	{
-		//TODO
-	}
-
-	return 0;
-}
-
-static int DigitalInput_ResourceReadHandler(void *context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID,
-	ResourceInstanceIDType resourceInstanceID, uint8_t *destBuffer, int destBufferLen)
-{
-	int result = 0;
-
-	switch (resourceID)
-	{
-		case IPSO_DIGITAL_INPUT_STATE:
-			result = sizeof(digitalInputs[objectInstanceID].State);
-			memcpy(destBuffer, &digitalInputs[objectInstanceID].State, result);
-			break;
-
-		case IPSO_DIGITAL_INPUT_COUNTER:
-			result = sizeof(digitalInputs[objectInstanceID].Counter);
-			memcpy(destBuffer, &digitalInputs[objectInstanceID].Counter, result);
-			break;
-
-		case IPSO_DIGITAL_INPUT_POLARITY:
-			result = sizeof(digitalInputs[objectInstanceID].State);
-			memcpy(destBuffer, &digitalInputs[objectInstanceID].State, result);
-			break;
-
-		case IPSO_DIGITAL_INPUT_DEBOUNCE_PERIOD:
-			result = sizeof(digitalInputs[objectInstanceID].Counter);
-			memcpy(destBuffer, &digitalInputs[objectInstanceID].Counter, result);
-			break;
-
-		case IPSO_DIGITAL_INPUT_EDGE_SELECTION:
-			result = sizeof(digitalInputs[objectInstanceID].State);
-			memcpy(destBuffer, &digitalInputs[objectInstanceID].State, result);
-			break;
-
-		case IPSO_APPICATION_TYPE:
-			result = strlen(digitalInputs[objectInstanceID].ApplicationType) + 1;
-			memcpy(destBuffer, digitalInputs[objectInstanceID].ApplicationType, result);
-			break;
-
-		case IPSO_SENSOR_TYPE:
-			result = strlen(digitalInputs[objectInstanceID].SensoryType) + 1;
-			memcpy(destBuffer, digitalInputs[objectInstanceID].SensoryType, result);
-			break;
-
-		default:
-			result = -1;
-			break;
-	}
-
-	return result;
-}
-
-static int DigitalInput_ResourceGetLengthHandler(void *context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID,
-	ResourceInstanceIDType resourceInstanceID)
-{
-	int result = 0;
-
-	switch (resourceID)
-	{
-		case IPSO_DIGITAL_INPUT_STATE:
-			result = sizeof(digitalInputs[objectInstanceID].State);
-			break;
-
-		case IPSO_DIGITAL_INPUT_COUNTER:
-			result = sizeof(digitalInputs[objectInstanceID].Counter);
-			break;
-
-		case IPSO_DIGITAL_INPUT_POLARITY:
-			result = sizeof(digitalInputs[objectInstanceID].State);
-			break;
-
-		case IPSO_DIGITAL_INPUT_DEBOUNCE_PERIOD:
-			result = sizeof(digitalInputs[objectInstanceID].Counter);
-			break;
-
-		case IPSO_DIGITAL_INPUT_EDGE_SELECTION:
-			result = sizeof(digitalInputs[objectInstanceID].State);
-			break;
-
-		case IPSO_APPICATION_TYPE:
-			result = strlen(digitalInputs[objectInstanceID].ApplicationType) + 1;
-			break;
-
-		case IPSO_SENSOR_TYPE:
-			result = strlen(digitalInputs[objectInstanceID].SensoryType) + 1;
-			break;
-
-		default:
-			result = -1;
-			break;
-	}
-
-	return result;
-}
-
-static int DigitalInput_ResourceWriteHandler(void *context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID,
-	ResourceInstanceIDType resourceInstanceID, uint8_t *srcBuffer, int srcBufferLen, bool *changed)
-{
-	int result;
-
-	switch(resourceID)
-	{
-		case IPSO_DIGITAL_INPUT_STATE:
-			result = srcBufferLen;
-			memcpy(&digitalInputs[objectInstanceID].State, srcBuffer, result);
-			break;
-
-		case IPSO_DIGITAL_INPUT_COUNTER:
-			result = srcBufferLen;
-			memcpy(&digitalInputs[objectInstanceID].Counter, srcBuffer, result);
-			Lwm2m_Debug("Button %d counter incremented to %d.\n", objectInstanceID + 1,
-				(int)digitalInputs[objectInstanceID].Counter);
-			break;
-
-		case IPSO_DIGITAL_INPUT_POLARITY:
-			result = srcBufferLen;
-			memcpy(&digitalInputs[objectInstanceID].State, srcBuffer, result);
-			break;
-
-		case IPSO_DIGITAL_INPUT_DEBOUNCE_PERIOD:
-			result = srcBufferLen;
-			memcpy(&digitalInputs[objectInstanceID].Counter, srcBuffer, result);
-			break;
-
-		case IPSO_DIGITAL_INPUT_EDGE_SELECTION:
-			result = srcBufferLen;
-			memcpy(&digitalInputs[objectInstanceID].State, srcBuffer, result);
-			break;
-
-		case IPSO_APPICATION_TYPE:
-			result = srcBufferLen;
-			if(result < sizeof(digitalInputs[objectInstanceID].ApplicationType))
-			{
-				memcpy(digitalInputs[objectInstanceID].ApplicationType, srcBuffer, result);
-			}
-			else
-			{
-				Lwm2m_Error("DigitalInput_ResourceWriteHandler Application Type string too long: "
-					"%d", result);
-				result = -1;
-			}
-			break;
-
-		case IPSO_SENSOR_TYPE:
-			result = srcBufferLen;
-			if(result < sizeof(digitalInputs[objectInstanceID].SensoryType))
-			{
-				memcpy(digitalInputs[objectInstanceID].SensoryType, srcBuffer, result);
-			}
-			else
-			{
-				Lwm2m_Error("DigitalInput_ResourceWriteHandler Sensor Type string too long: %d",
-					result);
-				result = -1;
-			}
-			break;
-
-		default:
-			result = -1;
-			break;
-	}
-
-	if(result > 0)
-		*changed = true;
-
-	return result;
-}
-
-static int DigitalInput_ResourceExecuteHandler(void *context, ObjectIDType objectID,
-	ObjectInstanceIDType objectInstanceID, ResourceIDType resourceID, uint8_t *srcBuffer,
-	int srcBufferLen)
-{
-	if(resourceID == IPSO_DIGITAL_INPUT_COUNTER_RESET)
-	{
-		int64_t zero = 0;
-		if (Lwm2mCore_SetResourceInstanceValue(context, objectID, objectInstanceID,
-			IPSO_DIGITAL_INPUT_COUNTER, 0, &zero, sizeof(zero)) == -1)
-		{
-			Lwm2m_Error("Failed to set Counter to %" PRId64 "\n", zero);
-			return -1;
-		}
-	}
-	else
-		return -1;
-
-	return 0;
-}
-
-/***************************************************************************************************
- * Implementation - Public
- **************************************************************************************************/
-
-int DigitalInput_RegisterDigitalInputObject(Lwm2mContextType * context)
-{
-
-	REGISTER_OBJECT(context, "DigitalInput", IPSO_DIGITAL_INPUT_OBJECT, \
-		MultipleInstancesEnum_Multiple, MandatoryEnum_Optional, \
-		&DigitalInputObjectOperationHandlers);
-
-	REGISTER_DIGITAL_INPUT_RESOURCE(context, "State", IPSO_DIGITAL_INPUT_STATE, \
-		ResourceTypeEnum_TypeBoolean, Operations_R);
-	REGISTER_DIGITAL_INPUT_RESOURCE(context, "Counter", IPSO_DIGITAL_INPUT_COUNTER, \
-		ResourceTypeEnum_TypeInteger, Operations_R);
-	REGISTER_DIGITAL_INPUT_RESOURCE(context, "Polarity", IPSO_DIGITAL_INPUT_POLARITY, \
-		ResourceTypeEnum_TypeBoolean, Operations_RW);
-	REGISTER_DIGITAL_INPUT_RESOURCE(context, "DebouncePeriod", IPSO_DIGITAL_INPUT_DEBOUNCE_PERIOD, \
-		ResourceTypeEnum_TypeInteger, Operations_RW);
-	REGISTER_DIGITAL_INPUT_RESOURCE(context, "EdgeSelection", IPSO_DIGITAL_INPUT_EDGE_SELECTION, \
-		ResourceTypeEnum_TypeInteger, Operations_RW);
-	REGISTER_DIGITAL_INPUT_RESOURCE(context, "CounterReset", IPSO_DIGITAL_INPUT_COUNTER_RESET, \
-		ResourceTypeEnum_TypeNone, Operations_E);
-	REGISTER_DIGITAL_INPUT_RESOURCE(context, "ApplicationType", IPSO_APPICATION_TYPE, \
-		ResourceTypeEnum_TypeString, Operations_R);
-	REGISTER_DIGITAL_INPUT_RESOURCE(context, "SensorType", IPSO_SENSOR_TYPE, \
-		ResourceTypeEnum_TypeString, Operations_R);
-
-	return 0;
-}
-
-int DigitalInput_AddDigitialInput(Lwm2mContextType *context, ObjectInstanceIDType objectInstanceID)
-{
-	if(objectInstanceID < DIGITAL_INPUTS)
-	{
-		CREATE_OBJECT_INSTANCE(context, IPSO_DIGITAL_INPUT_OBJECT, objectInstanceID);
-		CREATE_DIGITAL_INPUT_OPTIONAL_RESOURCE(context, objectInstanceID, \
-			IPSO_DIGITAL_INPUT_COUNTER);
-		CREATE_DIGITAL_INPUT_OPTIONAL_RESOURCE(context, objectInstanceID, \
-			IPSO_DIGITAL_INPUT_COUNTER_RESET);
-		CREATE_DIGITAL_INPUT_OPTIONAL_RESOURCE(context, objectInstanceID, IPSO_SENSOR_TYPE);
-
-		memset(&digitalInputs[objectInstanceID], 0, sizeof(IPSODigitalInput));
-		snprintf(digitalInputs[objectInstanceID].SensoryType, MAX_STR_SIZE, "Button%d",
-			objectInstanceID + 1);
-	}
-	else
-	{
-		Lwm2m_Error("%d instance of Digital Input exceeds max instances %d\n", objectInstanceID,
-			DIGITAL_INPUTS);
-		return -1;
-	}
-	return 0;
-}
-
-int DigitalInput_IncrementCounter(Lwm2mContextType *context, ObjectInstanceIDType objectInstanceID)
-{
-	int64_t counter = digitalInputs[objectInstanceID].Counter + 1;
-	if (Lwm2mCore_SetResourceInstanceValue(context, IPSO_DIGITAL_INPUT_OBJECT, objectInstanceID,
-		IPSO_DIGITAL_INPUT_COUNTER, 0, &counter, sizeof(counter)) == -1)
-	{
-		Lwm2m_Error("Failed to increment Counter resource\n");
-		return -1;
-	}
-	return 0;
+    if ((awaClient != NULL) && (objectInstanceID >= 0) && (objectInstanceID < DIGITAL_INPUTS))
+    {
+        digitalInputs[objectInstanceID].Counter += 1;
+        AwaStaticClient_ResourceChanged(awaClient, IPSO_DIGITAL_INPUT_OBJECT, objectInstanceID, IPSO_DIGITAL_INPUT_COUNTER);
+        return 0;
+    }
+    else
+    {
+        printf("Invalid arguments passed to %s", __func__);
+        return 1;
+    }
 }

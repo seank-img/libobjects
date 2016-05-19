@@ -49,12 +49,12 @@
  * Definitions
  **************************************************************************************************/
 
-#define FLOWM2M_FLOW_ACCESS_OBJECT								20001
-#define FLOWM2M_FLOW_ACCESS_OBJECT_URL							0
-#define FLOWM2M_FLOW_ACCESS_OBJECT_CUSTOMERKEY					1
-#define FLOWM2M_FLOW_ACCESS_OBJECT_CUSTOMERSECRET				2
-#define FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKEN				3
-#define FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKENEXPIRY		4
+#define FLOWM2M_FLOW_ACCESS_OBJECT                                20001
+#define FLOWM2M_FLOW_ACCESS_OBJECT_URL                            0
+#define FLOWM2M_FLOW_ACCESS_OBJECT_CUSTOMERKEY                    1
+#define FLOWM2M_FLOW_ACCESS_OBJECT_CUSTOMERSECRET                 2
+#define FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKEN                3
+#define FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKENEXPIRY          4
 
 #define FLOW_ACCESS_INSTANCES 1
 

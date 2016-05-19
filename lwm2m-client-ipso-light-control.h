@@ -39,12 +39,10 @@
 #include "lwm2m_core.h"
 
 
-typedef void (*LightControlCallBack)(void * context, bool OnOff, unsigned char Dimmer,
-	const char * Colour);
-int LightControl_RegisterLightControlObject(Lwm2mContextType * context);
-int LightControl_AddLightControl(Lwm2mContextType * context, ObjectInstanceIDType objectInstanceID,
-	LightControlCallBack callback, void * callbackContext);
-int LightControl_IncrementOnTime(Lwm2mContextType * context, ObjectInstanceIDType objectInstanceID,
-	int seconds);
+typedef void (*LightControlCallBack)(void *context, bool OnOff, unsigned char Dimmer, const char *Colour);
+int DefineLightControlObject(AwaStaticClient *awaClient);
+int LightControl_AddLightControl(AwaStaticClient *awaClient, ObjectInstanceIDType objectInstanceID,
+	LightControlCallBack callback, void *callbackContext);
+int LightControl_IncrementOnTime(AwaStaticClient *awaClient, ObjectInstanceIDType objectInstanceID, AwaInteger seconds);
 
 #endif /* LWM2M_CLIENT_IPSO_LIGHT_CONTROL_H_ */

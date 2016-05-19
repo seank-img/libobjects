@@ -51,21 +51,21 @@
  * Definitions
  **************************************************************************************************/
 
-#define FLOWM2M_FLOW_OBJECT							20000
-#define FLOWM2M_FLOW_OBJECT_DEVICEID				0
-#define FLOWM2M_FLOW_OBJECT_PARENTID				1
-#define FLOWM2M_FLOW_OBJECT_DEVICETYPE				2
-#define FLOWM2M_FLOW_OBJECT_NAME					3
-#define FLOWM2M_FLOW_OBJECT_DESCRIPTION				4
-#define FLOWM2M_FLOW_OBJECT_FCAP					5
-#define FLOWM2M_FLOW_OBJECT_LICENSEEID				6
-#define FLOWM2M_FLOW_OBJECT_LICENSEECHALLENGE		7
-#define FLOWM2M_FLOW_OBJECT_HASHITERATIONS			8
-#define FLOWM2M_FLOW_OBJECT_LICENSEEHASH			9
-#define FLOWM2M_FLOW_OBJECT_STATUS					10
+#define FLOWM2M_FLOW_OBJECT                         20000
+#define FLOWM2M_FLOW_OBJECT_DEVICEID                0
+#define FLOWM2M_FLOW_OBJECT_PARENTID                1
+#define FLOWM2M_FLOW_OBJECT_DEVICETYPE              2
+#define FLOWM2M_FLOW_OBJECT_NAME                    3
+#define FLOWM2M_FLOW_OBJECT_DESCRIPTION             4
+#define FLOWM2M_FLOW_OBJECT_FCAP                    5
+#define FLOWM2M_FLOW_OBJECT_LICENSEEID              6
+#define FLOWM2M_FLOW_OBJECT_LICENSEECHALLENGE       7
+#define FLOWM2M_FLOW_OBJECT_HASHITERATIONS          8
+#define FLOWM2M_FLOW_OBJECT_LICENSEEHASH            9
+#define FLOWM2M_FLOW_OBJECT_STATUS                  10
 
-#define MAX_STRING_SIZE								64
-#define MAX_KEY_SIZE								64
+#define MAX_STRING_SIZE                             64
+#define MAX_KEY_SIZE                                64
 
 
 
@@ -101,21 +101,21 @@ static FlowObject flow[FLOW_INSTANCES] = {0};
 
 static bool CalculateLicenseeHash(char *licenseeSecret, uint8_t hash[SHA256_HASH_LENGTH], const char *challenge, int challengeLength, int iterations)
 {
-	int i;
-	uint8_t key[MAX_KEY_SIZE];
-	int keyLen = b64Decode(key, sizeof(key), licenseeSecret, strlen(licenseeSecret));
+    int i;
+    uint8_t key[MAX_KEY_SIZE];
+    int keyLen = b64Decode(key, sizeof(key), licenseeSecret, strlen(licenseeSecret));
 
-	if (keyLen == -1)
-	{
-		return false;
-	}
+    if (keyLen == -1)
+    {
+        return false;
+    }
 
-	HmacSha256_ComputeHash(hash, challenge, challengeLength, key, keyLen);
-	for (i = 1; i < iterations; i++)
-	{
-		HmacSha256_ComputeHash(hash, hash, SHA256_HASH_LENGTH, key, keyLen);
-	}
-	return true;
+    HmacSha256_ComputeHash(hash, challenge, challengeLength, key, keyLen);
+    for (i = 1; i < iterations; i++)
+    {
+        HmacSha256_ComputeHash(hash, hash, SHA256_HASH_LENGTH, key, keyLen);
+    }
+    return true;
 }
 
 static AwaResult FlowObjectResourceHandler(AwaStaticClient *client, AwaOperation operation, AwaObjectID objectID, AwaObjectInstanceID objectInstanceID,
@@ -131,6 +131,7 @@ static AwaResult FlowObjectResourceHandler(AwaStaticClient *client, AwaOperation
 
 	switch (operation)
 	{
+
         case AwaOperation_DeleteObjectInstance:
             result = AwaResult_SuccessDeleted;
             memset(&flow[objectInstanceID], 0, sizeof(FlowObject));
@@ -178,7 +179,7 @@ static AwaResult FlowObjectResourceHandler(AwaStaticClient *client, AwaOperation
 					*dataSize = sizeof(flow[objectInstanceID].Status);
 					break;
 				default:
-					printf("[ERROR] Invalid resource id %d\n", resourceID);
+					printf("[ERROR] Invalid read resource id %d\n", resourceID);
 					break;
 			}
 			result = AwaResult_SuccessContent;
@@ -218,7 +219,7 @@ static AwaResult FlowObjectResourceHandler(AwaStaticClient *client, AwaOperation
 					break;
 
 				default:
-					printf("invalid resource id for write operation\n");
+				    printf("[ERROR] Invalid write resource id %d\n", resourceID);
 					break;
 			}
 			result = AwaResult_SuccessChanged;

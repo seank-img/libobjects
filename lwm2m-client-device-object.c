@@ -112,7 +112,6 @@ static AwaResult DeviceObjectExecuteHandler(AwaStaticClient *client, AwaOperatio
 {
     AwaResult result = AwaResult_Unspecified;
 
-
     printf("[INFO] EXECUTE handler operation %d\n", operation);
 
     switch(operation)
@@ -183,7 +182,7 @@ int DefineDeviceObject(AwaStaticClient *awaClient)
 //    AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_SERIAL_NUMBER);
 //    AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_FIRMWARE_VERSION);
 //    AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_AVAILABLE_POWER_SOURCES);
-//	  AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_POWER_SOURCE_VOLTAGE);
+//	AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_POWER_SOURCE_VOLTAGE);
 //    AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_POWER_SOURCE_CURRENT);
 //    AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_BATTERY_LEVEL);
 //    AwaStaticClient_CreateResource(awaClient, LWM2M_DEVICE_OBJECT, 0, LWM2M_DEVICE_OBJECT_MEMORY_FREE);
