@@ -154,11 +154,6 @@ static AwaResult FlowObjectResourceHandler(AwaStaticClient *client, AwaOperation
 					*dataSize = strlen(flow[objectInstanceID].FCAP);
 					break;
 
-				case FLOWM2M_FLOW_OBJECT_LICENSEEID:
-					*dataPointer = &flow[objectInstanceID].LicenseeID;
-					*dataSize = sizeof(flow[objectInstanceID].LicenseeID);
-					break;
-
 				case FLOWM2M_FLOW_OBJECT_LICENSEECHALLENGE:
 					*dataPointer = flow[objectInstanceID].LicenseeChallenge;
 					*dataSize = flow[objectInstanceID].LicenseeChallengeSize;
@@ -179,7 +174,7 @@ static AwaResult FlowObjectResourceHandler(AwaStaticClient *client, AwaOperation
 					*dataSize = sizeof(flow[objectInstanceID].Status);
 					break;
 				default:
-					printf("[ERROR] Invalid read resource id %d\n", resourceID);
+					printf("[INFO] default case for read resource id %d\n", resourceID);
 					break;
 			}
 			result = AwaResult_SuccessContent;
@@ -272,7 +267,7 @@ int DefineFlowObject(AwaStaticClient *awaClient)
 	AwaStaticClient_DefineResource(               awaClient, FLOWM2M_FLOW_OBJECT, FLOWM2M_FLOW_OBJECT_FCAP,              "FCAP",              AwaResourceType_String,  1, 1, AwaResourceOperations_ReadWrite);
 	AwaStaticClient_SetResourceOperationHandler(  awaClient, FLOWM2M_FLOW_OBJECT, FLOWM2M_FLOW_OBJECT_FCAP,              FlowObjectResourceHandler);
 	AwaStaticClient_DefineResource(               awaClient, FLOWM2M_FLOW_OBJECT, FLOWM2M_FLOW_OBJECT_LICENSEEID,        "LicenseeID",        AwaResourceType_Integer, 1, 1, AwaResourceOperations_ReadWrite);
-	AwaStaticClient_SetResourceStorageWithPointer(awaClient, FLOWM2M_FLOW_OBJECT, FLOWM2M_FLOW_OBJECT_LICENSEEID,        flow[0].LicenseeID, sizeof(flow[0].LicenseeID), 0);
+	AwaStaticClient_SetResourceStorageWithPointer(awaClient, FLOWM2M_FLOW_OBJECT, FLOWM2M_FLOW_OBJECT_LICENSEEID,        &flow[0].LicenseeID, sizeof(flow[0].LicenseeID), 0);
 	AwaStaticClient_DefineResource(               awaClient, FLOWM2M_FLOW_OBJECT, FLOWM2M_FLOW_OBJECT_LICENSEECHALLENGE, "LicenseeChallenge", AwaResourceType_Opaque,  0, 1, AwaResourceOperations_ReadWrite);
 	AwaStaticClient_SetResourceOperationHandler(  awaClient, FLOWM2M_FLOW_OBJECT, FLOWM2M_FLOW_OBJECT_LICENSEECHALLENGE, FlowObjectResourceHandler);
 	AwaStaticClient_DefineResource(               awaClient, FLOWM2M_FLOW_OBJECT, FLOWM2M_FLOW_OBJECT_HASHITERATIONS,    "HashIterations",    AwaResourceType_Integer, 0, 1, AwaResourceOperations_ReadWrite);

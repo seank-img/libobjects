@@ -87,7 +87,7 @@ int DefineFlowAccessObject(AwaStaticClient *awaClient)
 	AwaStaticClient_DefineResource(               awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKEN,       "RememberMeToken",       AwaResourceType_String, 0, 1, AwaResourceOperations_ReadWrite);
 	AwaStaticClient_SetResourceStorageWithPointer(awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKEN,       flowAccess[0].RememberMeToken, sizeof(flowAccess[0].RememberMeToken), 0);
 	AwaStaticClient_DefineResource(               awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKENEXPIRY, "RememberMeTokenExpiry", AwaResourceType_Time,   0, 1, AwaResourceOperations_ReadWrite);
-	AwaStaticClient_SetResourceStorageWithPointer(awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKENEXPIRY, flowAccess[0].RememberMeTokenExpiry, sizeof(flowAccess[0].RememberMeTokenExpiry), 0);
+	AwaStaticClient_SetResourceStorageWithPointer(awaClient, FLOWM2M_FLOW_ACCESS_OBJECT, FLOWM2M_FLOW_ACCESS_OBJECT_REMEMBERMETOKENEXPIRY, &flowAccess[0].RememberMeTokenExpiry, sizeof(flowAccess[0].RememberMeTokenExpiry), 0);
 
 	return 0;
 }
